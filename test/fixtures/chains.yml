@@ -1,0 +1,11 @@
+ethereum:
+  name: Ethereum
+  slug: eth
+  chain_id: 1
+  explorer_api_url: https://api.etherscan.io/v2/api
+
+base:
+  name: Base
+  slug: base
+  chain_id: 8453
+  explorer_api_url: https://api.etherscan.io/v2/api

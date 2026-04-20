@@ -1,0 +1,9 @@
+<div class="max-w-2xl mx-auto py-16 text-center">
+  <h1 class="text-3xl font-bold mb-4">Something went wrong</h1>
+  <% if flash[:alert] %>
+    <div class="alert alert-error mb-4">
+      <span><%= flash[:alert] %></span>
+    </div>
+  <% end %>
+  <p class="text-lg opacity-70">Please try again later.</p>
+</div>

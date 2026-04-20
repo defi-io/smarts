@@ -1,0 +1,50 @@
+<div class="collapse collapse-arrow bg-base-200">
+  <input type="checkbox">
+  <div class="collapse-title font-mono font-medium flex items-center gap-2">
+    <%= func["name"] %>
+    <span class="badge badge-sm <%= kind == 'view' ? 'badge-info' : 'badge-warning' %>"><%= func["stateMutability"] %></span>
+  </div>
+  <div class="collapse-content">
+    <%# Inputs %>
+    <% if func["inputs"]&.any? %>
+      <h4 class="font-semibold text-sm mt-2 mb-1">Parameters</h4>
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% func["inputs"].each do |input| %>
+            <tr>
+              <td class="font-mono"><%= input["name"].presence || "(unnamed)" %></td>
+              <td class="font-mono text-sm"><%= input["type"] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+
+    <%# Outputs %>
+    <% if func["outputs"]&.any? %>
+      <h4 class="font-semibold text-sm mt-3 mb-1">Returns</h4>
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% func["outputs"].each do |output| %>
+            <tr>
+              <td class="font-mono"><%= output["name"].presence || "(unnamed)" %></td>
+              <td class="font-mono text-sm"><%= output["type"] %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+</div>

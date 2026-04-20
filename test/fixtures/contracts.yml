@@ -1,0 +1,12 @@
+uni_token:
+  chain: ethereum
+  address: "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"
+  name: Uni
+  compiler_version: "v0.5.16+commit.9c3226ce"
+  abi: <%= [{"type"=>"function","name"=>"totalSupply","inputs"=>[],"outputs"=>[{"name"=>"","type"=>"uint256"}],"stateMutability"=>"view"},{"type"=>"function","name"=>"approve","inputs"=>[{"name"=>"spender","type"=>"address"},{"name"=>"rawAmount","type"=>"uint256"}],"outputs"=>[{"name"=>"","type"=>"bool"}],"stateMutability"=>"nonpayable"},{"type"=>"event","name"=>"Transfer","inputs"=>[{"name"=>"from","type"=>"address","indexed"=>true},{"name"=>"to","type"=>"address","indexed"=>true},{"name"=>"amount","type"=>"uint256","indexed"=>false}]}].to_json %>
+  verified_at: <%= 1.hour.ago %>
+
+empty_contract:
+  chain: ethereum
+  address: "0x0000000000000000000000000000000000000001"
+  name: Empty
