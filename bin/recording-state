@@ -1,0 +1,183 @@
+#!/usr/bin/env python3
+"""
+Manage recording state for the session-notes pipeline.
+
+Subcommands (all silent on no-op, exit 0 on expected paths):
+  maybe-start   called on PostToolUse Edit/Write/MultiEdit.
+                Starts recording if tree is dirty and no state file exists.
+                Feature name derived from branch (`feature/x` → `x`).
+                Falls back to `session-YYYYMMDD-HHMM` on master/main or detached HEAD.
+
+  maybe-stop    called on PostToolUse Bash.
+                Stops recording ONLY if session was auto-started AND branch is
+                back to master/main AND tree is clean. Manual-start sessions are
+                never auto-stopped — they respect the user's intent.
+
+  commit        called by git post-commit hook.
+                Appends a `### Commit` checkpoint to docs/notes/<feature>/raw.md.
+                Does not stop recording (features can span multiple commits).
+"""
+
+import datetime
+import json
+import os
+import pathlib
+import subprocess
+import sys
+
+
+def project_dir():
+    return os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+
+
+def state_path():
+    return pathlib.Path(project_dir()) / "docs/notes/.state.json"
+
+
+def load_state():
+    p = state_path()
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return None
+
+
+def save_state(state):
+    p = state_path()
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(state, indent=2) + "\n")
+
+
+def clear_state():
+    p = state_path()
+    if p.exists():
+        p.unlink()
+
+
+def git(*args, check=False):
+    try:
+        return subprocess.run(
+            ["git", "-C", project_dir()] + list(args),
+            capture_output=True, text=True, timeout=5,
+        )
+    except Exception:
+        class R:
+            stdout = ""
+            stderr = ""
+            returncode = 1
+        return R()
+
+
+def tree_is_dirty():
+    r = git("status", "--porcelain")
+    return bool(r.stdout.strip())
+
+
+def current_branch():
+    r = git("branch", "--show-current")
+    return r.stdout.strip()
+
+
+def branch_to_feature(branch):
+    if not branch or branch in ("master", "main"):
+        return None
+    if "/" in branch:
+        return branch.split("/", 1)[1]
+    return branch
+
+
+def now_iso():
+    return datetime.datetime.now().astimezone().isoformat()
+
+
+def cmd_maybe_start():
+    if load_state():
+        return
+    if not tree_is_dirty():
+        return
+    br = current_branch()
+    feature = branch_to_feature(br)
+    if not feature:
+        feature = "session-" + datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    save_state({
+        "feature": feature,
+        "started_at": now_iso(),
+        "branch": br or "",
+        "auto_started": True,
+    })
+    print(f"[recording] auto-started: {feature}"
+          + (f" (branch: {br})" if br else " (detached)"),
+          file=sys.stderr)
+
+
+def cmd_maybe_stop():
+    state = load_state()
+    if not state or not state.get("auto_started"):
+        return
+    br = current_branch()
+    if br not in ("master", "main"):
+        return
+    if tree_is_dirty():
+        return
+    feature = state.get("feature", "?")
+    clear_state()
+    print(f"[recording] auto-stopped: {feature} (back on {br}, clean)",
+          file=sys.stderr)
+
+
+def cmd_commit():
+    state = load_state()
+    if not state:
+        return
+    feature = state["feature"]
+    sha = git("rev-parse", "--short", "HEAD").stdout.strip()
+    subj = git("log", "-1", "--format=%s").stdout.strip()
+    author = git("log", "-1", "--format=%an").stdout.strip()
+    body = git("log", "-1", "--format=%b").stdout.strip()
+
+    out_dir = pathlib.Path(project_dir()) / "docs/notes" / feature
+    out_dir.mkdir(parents=True, exist_ok=True)
+    raw = out_dir / "raw.md"
+    if not raw.exists():
+        raw.write_text(
+            f"# Raw session notes: {feature}\n\n"
+            f"Started: {state.get('started_at','?')}\n"
+            f"Branch: {state.get('branch','?')}\n"
+        )
+
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    lines = [f"\n### Commit {ts}: `{sha}`", f"\n> {subj}"]
+    if body:
+        indented = "\n".join("> " + l for l in body.splitlines())
+        lines.append("> ")
+        lines.append(indented)
+    with open(raw, "a") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("usage: recording-state {maybe-start|maybe-stop|commit}",
+              file=sys.stderr)
+        return 2
+    cmd = sys.argv[1]
+    handlers = {
+        "maybe-start": cmd_maybe_start,
+        "maybe-stop": cmd_maybe_stop,
+        "commit": cmd_commit,
+    }
+    h = handlers.get(cmd)
+    if not h:
+        print(f"unknown subcommand: {cmd}", file=sys.stderr)
+        return 2
+    try:
+        h()
+    except Exception as e:
+        print(f"[recording] error in {cmd}: {e}", file=sys.stderr)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

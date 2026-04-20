@@ -38,3 +38,6 @@
 !/app/assets/builds/.keep
 
 /node_modules
+
+# Session recording notes (transient, for article material)
+docs/notes/

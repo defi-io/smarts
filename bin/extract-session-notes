@@ -1,0 +1,249 @@
+#!/usr/bin/env python3
+"""
+Extract article-worthy events from a Claude Code session transcript.
+
+Invoked as a Stop hook (reads JSON on stdin with transcript_path + session_id)
+or manually (pass transcript_path as arg).
+
+If docs/notes/.state.json shows an active recording, appends extracted events
+to docs/notes/<feature>/raw.md. Otherwise exits silently.
+"""
+import json
+import os
+import sys
+import datetime
+import pathlib
+
+
+def state_path(project_dir):
+    return pathlib.Path(project_dir) / "docs/notes/.state.json"
+
+
+def load_state(project_dir):
+    p = state_path(project_dir)
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return None
+
+
+def save_state(project_dir, state):
+    p = state_path(project_dir)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(state, indent=2) + "\n")
+
+
+def extract_events(transcript_path, started_at_iso=None):
+    """Parse jsonl, return structured events filtered after started_at."""
+    started_at = None
+    if started_at_iso:
+        try:
+            started_at = datetime.datetime.fromisoformat(started_at_iso.replace("Z", "+00:00"))
+        except Exception:
+            started_at = None
+
+    user_msgs = []
+    task_calls = []
+    bash_cmds = []
+    edits = set()
+    errors = []
+    assistant_texts = []
+
+    last_assistant_cmd_map = {}
+
+    with open(transcript_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except Exception:
+                continue
+
+            ts_raw = obj.get("timestamp")
+            if started_at and ts_raw:
+                try:
+                    ts = datetime.datetime.fromisoformat(ts_raw.replace("Z", "+00:00"))
+                    if ts < started_at:
+                        continue
+                except Exception:
+                    pass
+
+            mtype = obj.get("type")
+            msg = obj.get("message") or {}
+
+            if mtype == "user":
+                content = msg.get("content")
+                if isinstance(content, str):
+                    # Real user message. Filter out command/system-reminder wrappers.
+                    c = content.strip()
+                    if c.startswith("<command-") or c.startswith("<system-"):
+                        continue
+                    if c.startswith("[Request interrupted"):
+                        continue
+                    user_msgs.append(c[:800])
+                elif isinstance(content, list):
+                    # Tool result
+                    tr = obj.get("toolUseResult")
+                    is_err = False
+                    for b in content:
+                        if b.get("type") == "tool_result" and b.get("is_error"):
+                            is_err = True
+                    if is_err and isinstance(tr, dict):
+                        stderr = (tr.get("stderr") or "")[:400]
+                        stdout = (tr.get("stdout") or "")[:400]
+                        snippet = (stderr or stdout).strip()
+                        if snippet:
+                            errors.append(snippet)
+
+            elif mtype == "assistant":
+                for b in msg.get("content") or []:
+                    btype = b.get("type")
+                    if btype == "text":
+                        txt = (b.get("text") or "").strip()
+                        if txt and len(txt) > 20:
+                            assistant_texts.append(txt[:600])
+                    elif btype == "tool_use":
+                        name = b.get("name")
+                        inp = b.get("input") or {}
+                        if name == "Task":
+                            task_calls.append({
+                                "desc": inp.get("description", "")[:120],
+                                "subagent": inp.get("subagent_type", "general-purpose"),
+                                "prompt": (inp.get("prompt") or "")[:2000],
+                            })
+                        elif name == "Bash":
+                            cmd = (inp.get("command") or "").strip()
+                            desc = inp.get("description", "")
+                            keep_patterns = (
+                                "test", "spec", "rspec", "minitest",
+                                "kamal", "git commit", "git push",
+                                "rails db", "rails routes", "rails runner",
+                                "migrate", "curl -X", "curl -s -X",
+                            )
+                            if any(kw in cmd for kw in keep_patterns):
+                                bash_cmds.append({"cmd": cmd[:400], "desc": desc})
+                        elif name in ("Edit", "Write"):
+                            p = inp.get("file_path", "")
+                            if p:
+                                edits.add(p)
+
+    return {
+        "user_msgs": user_msgs,
+        "task_calls": task_calls,
+        "bash_cmds": bash_cmds,
+        "edits": sorted(edits),
+        "errors": errors,
+        "assistant_texts": assistant_texts,
+    }
+
+
+def format_markdown(events, session_id, project_dir):
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    sid_short = (session_id or "?")[:8]
+    lines = [f"\n## Session {now} (`{sid_short}`)\n"]
+
+    if events["user_msgs"]:
+        lines.append("### User prompts\n")
+        for m in events["user_msgs"][:40]:
+            first_line = m.split("\n")[0][:200]
+            lines.append(f"- {first_line}")
+        lines.append("")
+
+    if events["task_calls"]:
+        lines.append("### Sub-agent invocations\n")
+        for i, t in enumerate(events["task_calls"], 1):
+            lines.append(f"**#{i} {t['desc']}** — `{t['subagent']}`")
+            lines.append("")
+            lines.append("```")
+            lines.append(t["prompt"].strip())
+            lines.append("```")
+            lines.append("")
+
+    if events["bash_cmds"]:
+        lines.append("### Key bash commands\n")
+        for b in events["bash_cmds"][:30]:
+            d = f" — {b['desc']}" if b["desc"] else ""
+            lines.append(f"- `{b['cmd'][:150]}`{d}")
+        lines.append("")
+
+    if events["edits"]:
+        lines.append("### Files edited/written\n")
+        pd = project_dir.rstrip("/") + "/"
+        for p in events["edits"][:50]:
+            rel = p.replace(pd, "")
+            lines.append(f"- `{rel}`")
+        lines.append("")
+
+    if events["errors"]:
+        lines.append("### Errors encountered\n")
+        for e in events["errors"][:10]:
+            lines.append("```")
+            lines.append(e.strip())
+            lines.append("```")
+        lines.append("")
+
+    return "\n".join(lines)
+
+
+def main():
+    # Hook mode: read JSON from stdin
+    transcript_path = None
+    session_id = None
+
+    if not sys.stdin.isatty():
+        try:
+            data = json.load(sys.stdin)
+            transcript_path = data.get("transcript_path")
+            session_id = data.get("session_id")
+        except Exception:
+            pass
+
+    if not transcript_path and len(sys.argv) > 1:
+        transcript_path = sys.argv[1]
+
+    if not transcript_path or not os.path.exists(transcript_path):
+        return 0
+
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
+    state = load_state(project_dir)
+    if not state:
+        return 0  # not recording
+
+    feature = state.get("feature")
+    if not feature:
+        return 0
+
+    # Resume from last extracted timestamp, not started_at, so repeat runs
+    # within the same recording don't duplicate events.
+    filter_after = state.get("last_extracted_at") or state.get("started_at")
+    events = extract_events(transcript_path, filter_after)
+
+    # If nothing interesting, skip
+    if not any([events["user_msgs"], events["task_calls"], events["bash_cmds"], events["edits"]]):
+        return 0
+
+    out_dir = pathlib.Path(project_dir) / "docs/notes" / feature
+    out_dir.mkdir(parents=True, exist_ok=True)
+    raw_path = out_dir / "raw.md"
+
+    if not raw_path.exists():
+        header = f"# Raw session notes: {feature}\n\nStarted: {state.get('started_at', '?')}\n"
+        raw_path.write_text(header)
+
+    md = format_markdown(events, session_id, project_dir)
+    with open(raw_path, "a") as f:
+        f.write(md)
+
+    # Advance cursor so the next extraction doesn't replay these events.
+    state["last_extracted_at"] = datetime.datetime.now().astimezone().isoformat()
+    save_state(project_dir, state)
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
