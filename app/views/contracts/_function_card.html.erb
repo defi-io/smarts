@@ -38,7 +38,7 @@
           <% func["inputs"].each do |input| %>
             <% param_source = source.dig("params", input["name"]) %>
             <tr>
-              <td class="font-mono"><%= input["name"].presence || "(unnamed)" %></td>
+              <td class="font-mono"><%= input["name"].presence || content_tag(:span, "—", class: "opacity-40") %></td>
               <td class="font-mono text-sm"><%= input["type"] %></td>
               <td class="text-sm opacity-80">
                 <%= doc.dig("params", input["name"]) %><%= ai_badge(param_source) %>
@@ -63,7 +63,7 @@
           <% func["outputs"].each_with_index do |output, i| %>
             <% return_source = Array(source["returns"])[i] %>
             <tr>
-              <td class="font-mono"><%= output["name"].presence || "(unnamed)" %></td>
+              <td class="font-mono"><%= output["name"].presence || content_tag(:span, "—", class: "opacity-40") %></td>
               <td class="font-mono text-sm"><%= output["type"] %></td>
               <td class="text-sm opacity-80">
                 <%= Array(doc["returns"])[i] %><%= ai_badge(return_source) %>

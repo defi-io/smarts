@@ -230,6 +230,18 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", contract.name
   end
 
+  test "show renders an em-dash placeholder for unnamed input/output parameters" do
+    contract = contracts(:uni_token)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      get contract_path(chain: "eth", address: contract.address)
+    end
+
+    assert_response :success
+    assert_match "opacity-40", response.body
+    refute_match "(unnamed)", response.body
+  end
+
   test "show renders ✨ AI badge next to AI-generated descriptions" do
     contract = contracts(:uni_token)
     contract.update!(
