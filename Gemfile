@@ -55,6 +55,9 @@ gem "rouge", "~> 4.7"
 # AI doc generation via Claude
 gem "ruby_llm", "~> 1.14"
 
+# MCP server for AI-agent access to contract docs
+gem "fast-mcp", "~> 1.6"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"
