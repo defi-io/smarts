@@ -57,4 +57,21 @@ class ContractTest < ActiveSupport::TestCase
     assert_equal [], contract.write_functions
     assert_equal [], contract.events
   end
+
+  test "natspec_for returns doc hash for known function" do
+    contract = contracts(:uni_token)
+    contract.update!(natspec: { "functions" => { "transfer" => { "notice" => "Moves tokens." } } })
+
+    assert_equal "Moves tokens.", contract.natspec_for("functions", "transfer")["notice"]
+  end
+
+  test "natspec_for returns empty hash for unknown function" do
+    contract = contracts(:uni_token)
+    assert_equal({}, contract.natspec_for("functions", "nonexistent"))
+  end
+
+  test "natspec_for tolerates nil natspec column" do
+    contract = contracts(:empty_contract)
+    assert_equal({}, contract.natspec_for("functions", "anything"))
+  end
 end

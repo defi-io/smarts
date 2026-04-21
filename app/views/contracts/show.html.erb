@@ -1,5 +1,4 @@
 <div class="max-w-5xl mx-auto py-8 px-4">
-  <%# Header %>
   <div class="mb-8">
     <div class="flex items-center gap-3 mb-2">
       <h1 class="text-3xl font-bold"><%= @contract.name.presence || "Unknown Contract" %></h1>
@@ -11,96 +10,15 @@
     <% end %>
   </div>
 
-  <div class="divider"></div>
-
-  <%# Overview %>
-  <section class="mb-8">
-    <h2 class="text-2xl font-semibold mb-4">Overview</h2>
-    <div class="stats shadow">
-      <div class="stat">
-        <div class="stat-title">Read Functions</div>
-        <div class="stat-value text-primary"><%= @contract.view_functions.size %></div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Write Functions</div>
-        <div class="stat-value text-secondary"><%= @contract.write_functions.size %></div>
-      </div>
-      <div class="stat">
-        <div class="stat-title">Events</div>
-        <div class="stat-value text-accent"><%= @contract.events.size %></div>
-      </div>
+  <div role="tablist" class="tabs tabs-lift tabs-lg">
+    <input type="radio" name="contract_view" role="tab" class="tab" aria-label="Docs" checked />
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
+      <%= render "contracts/docs" %>
     </div>
-  </section>
 
-  <%# Read Functions %>
-  <% if @contract.view_functions.any? %>
-    <section class="mb-8">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-2xl font-semibold">Read Functions</h2>
-        <% if @live_values.present? %>
-          <span class="text-xs opacity-60">Live from chain · cached 60s</span>
-        <% end %>
-      </div>
-      <div class="space-y-3">
-        <% @contract.view_functions.each do |func| %>
-          <% sig = "#{func['name']}(#{Array(func['inputs']).map { |i| i['type'] }.join(',')})" %>
-          <%= render "contracts/function_card",
-                func: func,
-                kind: "view",
-                live_result: @live_values[sig] %>
-        <% end %>
-      </div>
-    </section>
-  <% end %>
-
-  <%# Write Functions %>
-  <% if @contract.write_functions.any? %>
-    <section class="mb-8">
-      <h2 class="text-2xl font-semibold mb-4">Write Functions</h2>
-      <div class="space-y-3">
-        <% @contract.write_functions.each do |func| %>
-          <%= render "contracts/function_card", func: func, kind: "write" %>
-        <% end %>
-      </div>
-    </section>
-  <% end %>
-
-  <%# Events %>
-  <% if @contract.events.any? %>
-    <section class="mb-8">
-      <h2 class="text-2xl font-semibold mb-4">Events</h2>
-      <div class="space-y-3">
-        <% @contract.events.each do |event| %>
-          <div class="collapse collapse-arrow bg-base-200">
-            <input type="checkbox">
-            <div class="collapse-title font-mono font-medium">
-              <%= event["name"] %>
-            </div>
-            <div class="collapse-content">
-              <% if event["inputs"]&.any? %>
-                <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>Name</th>
-                      <th>Type</th>
-                      <th>Indexed</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <% event["inputs"].each do |input| %>
-                      <tr>
-                        <td class="font-mono"><%= input["name"] %></td>
-                        <td class="font-mono text-sm"><%= input["type"] %></td>
-                        <td><%= input["indexed"] ? "✓" : "" %></td>
-                      </tr>
-                    <% end %>
-                  </tbody>
-                </table>
-              <% end %>
-            </div>
-          </div>
-        <% end %>
-      </div>
-    </section>
-  <% end %>
+    <input type="radio" name="contract_view" role="tab" class="tab" aria-label="Source" />
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
+      <%= render "contracts/source" %>
+    </div>
+  </div>
 </div>

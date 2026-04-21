@@ -41,6 +41,20 @@ module ContractsHelper
     content_tag(:span, "→ #{parts.join(', ')}", class: "text-success text-xs font-mono break-all")
   end
 
+  # Builds a human-readable signature with named parameters:
+  # balanceOf(account: address)  —  omits names when unnamed.
+  def function_signature_with_params(fn)
+    inputs = Array(fn["inputs"])
+    return "#{fn['name']}()" if inputs.empty?
+
+    parts = inputs.map do |i|
+      name = i["name"].to_s
+      name.empty? ? i["type"] : "#{name}: #{i['type']}"
+    end
+
+    "#{fn['name']}(#{parts.join(', ')})"
+  end
+
   private
 
   def format_integer(n)

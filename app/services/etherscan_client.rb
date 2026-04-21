@@ -19,7 +19,7 @@ class EtherscanClient
       compiler_version: source["CompilerVersion"],
       source_code: source["SourceCode"],
       abi: abi,
-      natspec: extract_natspec(source),
+      natspec: NatSpecExtractor.call(source["SourceCode"]),
       verified_at: Time.current
     }
   end
@@ -38,17 +38,6 @@ class EtherscanClient
   def fetch_abi(address)
     result = request(module: "contract", action: "getabi", address: address)
     JSON.parse(result)
-  end
-
-  def extract_natspec(source_data)
-    # NatSpec comments are embedded in source code; extract basic info
-    {
-      "compiler" => source_data["CompilerVersion"],
-      "optimization" => source_data["OptimizationUsed"],
-      "runs" => source_data["Runs"],
-      "evm_version" => source_data["EVMVersion"],
-      "license" => source_data["LicenseType"]
-    }
   end
 
   def request(params)

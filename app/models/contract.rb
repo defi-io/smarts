@@ -28,6 +28,14 @@ class Contract < ApplicationRecord
     abi.select { |item| item["type"] == "event" }
   end
 
+  # Returns {"notice" => ..., "dev" => ..., "params" => {...}, "returns" => [...]}
+  # or {} if no docs are present for this function/event.
+  def natspec_for(kind, name)
+    return {} unless natspec.is_a?(Hash)
+
+    natspec.dig(kind, name) || {}
+  end
+
   private
 
   def normalize_address

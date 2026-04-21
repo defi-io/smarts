@@ -1,0 +1,96 @@
+<section class="mb-8">
+  <h2 class="text-2xl font-semibold mb-4">Overview</h2>
+  <div class="stats shadow">
+    <div class="stat">
+      <div class="stat-title">Read Functions</div>
+      <div class="stat-value text-primary"><%= @contract.view_functions.size %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Write Functions</div>
+      <div class="stat-value text-secondary"><%= @contract.write_functions.size %></div>
+    </div>
+    <div class="stat">
+      <div class="stat-title">Events</div>
+      <div class="stat-value text-accent"><%= @contract.events.size %></div>
+    </div>
+  </div>
+</section>
+
+<% if @contract.view_functions.any? %>
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-2xl font-semibold">Read Functions</h2>
+      <% if @live_values.present? %>
+        <span class="text-xs opacity-60">Live from chain · cached 60s</span>
+      <% end %>
+    </div>
+    <div class="space-y-3">
+      <% @contract.view_functions.each do |func| %>
+        <% sig = "#{func['name']}(#{Array(func['inputs']).map { |i| i['type'] }.join(',')})" %>
+        <%= render "contracts/function_card",
+              func: func,
+              kind: "view",
+              live_result: @live_values[sig],
+              natspec: @contract.natspec_for("functions", func["name"]) %>
+      <% end %>
+    </div>
+  </section>
+<% end %>
+
+<% if @contract.write_functions.any? %>
+  <section class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Write Functions</h2>
+    <div class="space-y-3">
+      <% @contract.write_functions.each do |func| %>
+        <%= render "contracts/function_card",
+              func: func,
+              kind: "write",
+              natspec: @contract.natspec_for("functions", func["name"]) %>
+      <% end %>
+    </div>
+  </section>
+<% end %>
+
+<% if @contract.events.any? %>
+  <section class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Events</h2>
+    <div class="space-y-3">
+      <% @contract.events.each do |event| %>
+        <% ev_doc = @contract.natspec_for("events", event["name"]) %>
+        <div class="collapse collapse-arrow bg-base-200">
+          <input type="checkbox">
+          <div class="collapse-title">
+            <div class="font-mono font-medium"><%= function_signature_with_params(event) %></div>
+            <% if ev_doc["notice"].present? %>
+              <p class="text-sm mt-2 opacity-80"><%= ev_doc["notice"] %></p>
+            <% end %>
+          </div>
+          <div class="collapse-content">
+            <% if event["inputs"]&.any? %>
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Indexed</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% event["inputs"].each do |input| %>
+                    <tr>
+                      <td class="font-mono"><%= input["name"] %></td>
+                      <td class="font-mono text-sm"><%= input["type"] %></td>
+                      <td><%= input["indexed"] ? "✓" : "" %></td>
+                      <td class="text-sm opacity-80"><%= ev_doc.dig("params", input["name"]) %></td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+<% end %>

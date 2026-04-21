@@ -1,0 +1,35 @@
+<% files = source_files(@contract.source_code) %>
+
+<% if files.empty? %>
+  <p class="opacity-70">Source code is not available.</p>
+<% else %>
+  <style><%= rouge_theme_stylesheet %></style>
+
+  <% if files.size == 1 %>
+    <div class="text-xs opacity-60 mb-2 font-mono"><%= files.first[:path] %></div>
+    <div class="highlight rounded-lg bg-base-200 p-4 overflow-auto text-sm max-h-[80vh]">
+      <pre class="whitespace-pre"><%= highlight_solidity(files.first[:content]) %></pre>
+    </div>
+  <% else %>
+    <p class="text-sm opacity-70 mb-4"><%= files.size %> files</p>
+
+    <div role="tablist" class="tabs tabs-box flex-wrap">
+      <% files.each_with_index do |file, i| %>
+        <input
+          type="radio"
+          name="source_file"
+          role="tab"
+          class="tab"
+          aria-label="<%= File.basename(file[:path]) %>"
+          <%= "checked" if i == 0 %>
+        />
+        <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-4">
+          <div class="text-xs opacity-60 mb-2 font-mono"><%= file[:path] %></div>
+          <div class="highlight rounded-lg bg-base-200 p-4 overflow-auto text-sm max-h-[80vh]">
+            <pre class="whitespace-pre"><%= highlight_solidity(file[:content]) %></pre>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

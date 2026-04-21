@@ -27,16 +27,33 @@ class EtherscanClientTest < ActiveSupport::TestCase
     assert_not_nil info[:verified_at]
   end
 
+  test "fetch_contract_info extracts NatSpec from source" do
+    stub_etherscan_source(verified: true, source_code: <<~SOL)
+      contract Uni {
+        /// @notice Total tokens in circulation.
+        /// @return The amount.
+        function totalSupply() external view returns (uint256) {}
+      }
+    SOL
+    stub_etherscan_abi
+
+    info = @client.fetch_contract_info("0x1f9840a85d5af5bf1d1762f925bdaddc4201f984")
+
+    assert_kind_of Hash, info[:natspec]
+    assert_equal "Total tokens in circulation.", info[:natspec].dig("functions", "totalSupply", "notice")
+    assert_equal [ "The amount." ], info[:natspec].dig("functions", "totalSupply", "returns")
+  end
+
   private
 
-  def stub_etherscan_source(verified:)
+  def stub_etherscan_source(verified:, source_code: "contract Uni {}")
     body = if verified
       {
         "status" => "1", "message" => "OK",
         "result" => [ {
           "ContractName" => "Uni",
           "CompilerVersion" => "v0.5.16",
-          "SourceCode" => "contract Uni {}",
+          "SourceCode" => source_code,
           "ABI" => '[{"type":"function","name":"totalSupply"}]',
           "OptimizationUsed" => "1",
           "Runs" => "200",

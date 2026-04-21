@@ -90,4 +90,31 @@ class ContractsHelperTest < ActionView::TestCase
     html = render_live_result(result, fn)
     assert_includes html, "1, 2"
   end
+
+  test "function_signature_with_params renders zero-arg as bare parens" do
+    fn = { "name" => "totalSupply", "inputs" => [] }
+    assert_equal "totalSupply()", function_signature_with_params(fn)
+  end
+
+  test "function_signature_with_params includes named parameters" do
+    fn = {
+      "name" => "transfer",
+      "inputs" => [
+        { "name" => "to", "type" => "address" },
+        { "name" => "amount", "type" => "uint256" }
+      ]
+    }
+    assert_equal "transfer(to: address, amount: uint256)", function_signature_with_params(fn)
+  end
+
+  test "function_signature_with_params omits empty names" do
+    fn = {
+      "name" => "mixed",
+      "inputs" => [
+        { "name" => "", "type" => "address" },
+        { "name" => "amount", "type" => "uint256" }
+      ]
+    }
+    assert_equal "mixed(address, amount: uint256)", function_signature_with_params(fn)
+  end
 end

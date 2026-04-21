@@ -1,14 +1,26 @@
+<% doc = local_assigns[:natspec] || {} %>
+
 <div class="collapse collapse-arrow bg-base-200">
   <input type="checkbox">
-  <div class="collapse-title font-mono font-medium flex items-center gap-2 flex-wrap">
-    <span><%= func["name"] %></span>
-    <span class="badge badge-sm <%= kind == 'view' ? 'badge-info' : 'badge-warning' %>"><%= func["stateMutability"] %></span>
-    <% if local_assigns[:live_result] %>
-      <%= render_live_result(local_assigns[:live_result], func) %>
+  <div class="collapse-title">
+    <div class="font-mono font-medium flex items-center gap-2 flex-wrap">
+      <span><%= function_signature_with_params(func) %></span>
+      <span class="badge badge-sm <%= kind == 'view' ? 'badge-info' : 'badge-warning' %>"><%= func["stateMutability"] %></span>
+      <% if local_assigns[:live_result] %>
+        <%= render_live_result(local_assigns[:live_result], func) %>
+      <% end %>
+    </div>
+    <% if doc["notice"].present? %>
+      <p class="text-sm mt-2 opacity-80"><%= doc["notice"] %></p>
     <% end %>
   </div>
   <div class="collapse-content">
-    <%# Inputs %>
+    <% if doc["dev"].present? %>
+      <div class="alert alert-info alert-soft text-xs mb-3">
+        <span class="font-semibold">dev:</span> <%= doc["dev"] %>
+      </div>
+    <% end %>
+
     <% if func["inputs"]&.any? %>
       <h4 class="font-semibold text-sm mt-2 mb-1">Parameters</h4>
       <table class="table table-sm">
@@ -16,6 +28,7 @@
           <tr>
             <th>Name</th>
             <th>Type</th>
+            <th>Description</th>
           </tr>
         </thead>
         <tbody>
@@ -23,13 +36,13 @@
             <tr>
               <td class="font-mono"><%= input["name"].presence || "(unnamed)" %></td>
               <td class="font-mono text-sm"><%= input["type"] %></td>
+              <td class="text-sm opacity-80"><%= doc.dig("params", input["name"]) %></td>
             </tr>
           <% end %>
         </tbody>
       </table>
     <% end %>
 
-    <%# Outputs %>
     <% if func["outputs"]&.any? %>
       <h4 class="font-semibold text-sm mt-3 mb-1">Returns</h4>
       <table class="table table-sm">
@@ -37,13 +50,15 @@
           <tr>
             <th>Name</th>
             <th>Type</th>
+            <th>Description</th>
           </tr>
         </thead>
         <tbody>
-          <% func["outputs"].each do |output| %>
+          <% func["outputs"].each_with_index do |output, i| %>
             <tr>
               <td class="font-mono"><%= output["name"].presence || "(unnamed)" %></td>
               <td class="font-mono text-sm"><%= output["type"] %></td>
+              <td class="text-sm opacity-80"><%= Array(doc["returns"])[i] %></td>
             </tr>
           <% end %>
         </tbody>
