@@ -139,6 +139,34 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_match 'aria-label="IERC.sol"', response.body
   end
 
+  test "show renders classification badge for a classifiable contract" do
+    # uni_token fixture has an ERC-20 method in its ABI. Add the full set so
+    # the classifier picks it up.
+    contract = contracts(:uni_token)
+    contract.update!(abi: erc20_like_abi)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      get contract_path(chain: "eth", address: contract.address)
+    end
+
+    assert_response :success
+    assert_match "ERC-20 Token", response.body
+    assert_match "Fungible token following the ERC-20 standard", response.body
+  end
+
+  test "show tolerates classifier failure and still renders the page" do
+    contract = contracts(:uni_token)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractDocument::Classifier, :call, ->(_c) { raise "classifier bug" }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    assert_response :success
+    refute_match "ERC-20 Token", response.body
+  end
+
   test "show tolerates protocol-adapter failure and renders the page without a panel" do
     contract = contracts(:uni_token)
     crashing = ->(_c) { raise StandardError, "adapter bug" }
@@ -166,6 +194,21 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def erc20_like_abi
+    %w[totalSupply balanceOf(address) transfer(address,uint256)
+       transferFrom(address,address,uint256) approve(address,uint256)
+       allowance(address,address)].map do |sig|
+      name, args = sig.split("(")
+      arg_types = args.to_s.chomp(")").split(",").reject(&:empty?)
+      {
+        "type" => "function", "name" => name,
+        "inputs" => arg_types.map { |t| { "type" => t } },
+        "outputs" => [],
+        "stateMutability" => "view"
+      }
+    end
+  end
 
   def stub_etherscan_full(source_code: "contract TetherToken {}")
     source_body = {

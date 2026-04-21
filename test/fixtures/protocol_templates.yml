@@ -1,0 +1,30 @@
+erc20:
+  protocol_key: erc20
+  display_name: ERC-20 Token
+  description: Fungible token following the ERC-20 standard.
+  match_type: required_selectors
+  priority: 100
+  required_selectors: <%= [
+    "0x18160ddd", # totalSupply()
+    "0x70a08231", # balanceOf(address)
+    "0xa9059cbb", # transfer(address,uint256)
+    "0x23b872dd", # transferFrom(address,address,uint256)
+    "0x095ea7b3", # approve(address,uint256)
+    "0xdd62ed3e"  # allowance(address,address)
+  ].to_json %>
+
+uniswap_v3_pool:
+  protocol_key: uniswap_v3_pool
+  display_name: Uniswap V3 Pool
+  description: Concentrated-liquidity AMM pool.
+  match_type: required_selectors
+  priority: 10
+  required_selectors: <%= [
+    "0xc45a0155", # factory()
+    "0x0dfe1681", # token0()
+    "0xd21220a7", # token1()
+    "0xddca3f43", # fee()
+    "0x3850c7bd", # slot0()
+    "0xd0c93a7c", # tickSpacing()
+    "0x1a686502"  # liquidity()
+  ].to_json %>
