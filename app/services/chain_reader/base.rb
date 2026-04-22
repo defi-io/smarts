@@ -37,6 +37,20 @@ module ChainReader
         [ hex.to_s.sub(/\A0x/, "") ].pack("H*")
       end
 
+      # `Eth::Abi.decode` returns ABI `string` values tagged as ASCII-8BIT
+      # (binary). Tokens like Arbitrum USDT whose symbol is "USD₮0" then
+      # collide with UTF-8 literals in ERB (e.g. an `↗` glyph) and raise
+      # Encoding::CompatibilityError. This retags a decoded value to UTF-8
+      # when its declared ABI type is `string` and the bytes happen to be
+      # valid UTF-8. Non-string types (uint, address, bytes*) are unchanged.
+      def retag_string_encoding(value, output)
+        return value unless output["type"] == "string" && value.is_a?(String)
+        return value if value.encoding == Encoding::UTF_8
+
+        candidate = value.dup.force_encoding(Encoding::UTF_8)
+        candidate.valid_encoding? ? candidate : value
+      end
+
       # Recursively builds the canonical ABI type string for an input/output hash.
       # Handles tuples (with components), tuple arrays (tuple[], tuple[N]), and
       # regular scalars. Feed this to Eth::Abi.decode/encode.

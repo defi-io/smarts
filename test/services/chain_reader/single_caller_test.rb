@@ -125,6 +125,21 @@ class ChainReader::SingleCallerTest < ActiveSupport::TestCase
     end
   end
 
+  # Regression guard: when a contract's `symbol()` returns bytes that are
+  # valid UTF-8 (like Arbitrum USDT0's "USD₮0"), the ABI decoder tags them
+  # ASCII-8BIT. decode_one must retag to UTF-8 so downstream ERB doesn't
+  # blow up with Encoding::CompatibilityError.
+  test "decoded string values are returned as UTF-8 when they're valid UTF-8" do
+    contract = build_contract([ abi_fn("symbol", outputs: [ "string" ]) ])
+    hex = "0x" + Eth::Abi.encode([ "string" ], [ "USD₮0" ]).unpack1("H*")
+
+    stub_class_method(ChainReader::Base, :eth_call_hex, ->(_c, **_) { hex }) do
+      r = ChainReader::SingleCaller.call(contract: contract, function_name: "symbol")
+      assert_equal [ "USD₮0" ], r.values
+      assert_equal Encoding::UTF_8, r.value.encoding, "string outputs must be tagged UTF-8"
+    end
+  end
+
   private
 
   def abi_fn(name, inputs: [], outputs: [], mutability: "view")

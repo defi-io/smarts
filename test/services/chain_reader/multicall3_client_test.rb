@@ -36,6 +36,25 @@ class ChainReader::Multicall3ClientTest < ActiveSupport::TestCase
     end
   end
 
+  # Regression guard: Arbitrum USDT0's symbol() returns "USD₮0" (the ₮ glyph
+  # is 3 UTF-8 bytes). Without retag_string_encoding, the ABI decoder hands
+  # back an ASCII-8BIT string that collides with UTF-8 literals in ERB and
+  # raises Encoding::CompatibilityError at render time.
+  test "decoded string values are returned as UTF-8 when they're valid UTF-8" do
+    calls = [ call_for("symbol", [], [ "string" ]) ]
+
+    fake_response = encode_multicall_response([
+      [ true, Eth::Abi.encode([ "string" ], [ "USD₮0" ]) ]
+    ])
+
+    stub_eth_call(fake_response) do
+      results = ChainReader::Multicall3Client.call(chain: @chain, calls: calls)
+      assert_equal [ "USD₮0" ], results[0].values
+      assert_equal Encoding::UTF_8, results[0].values.first.encoding,
+                   "ABI `string` outputs must be tagged UTF-8 when their bytes are valid UTF-8"
+    end
+  end
+
   test "marks individual call as reverted while others succeed" do
     calls = [
       call_for("ok", [], [ "uint256" ]),

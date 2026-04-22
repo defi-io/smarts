@@ -38,6 +38,7 @@ module ChainReader
       outputs = Array(fn["outputs"])
       types = outputs.map { |o| Base.abi_type_string(o) }
       values = types.empty? ? [] : Eth::Abi.decode(types, Base.hex_to_bytes(hex))
+      values = values.map.with_index { |v, i| Base.retag_string_encoding(v, outputs[i]) }
 
       Result.new(success: true, values: values, error: nil, block_number: nil)
     rescue FunctionNotFound => e

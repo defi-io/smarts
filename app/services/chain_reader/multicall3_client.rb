@@ -56,6 +56,7 @@ module ChainReader
 
       types = outputs.map { |o| Base.abi_type_string(o) }
       values = Eth::Abi.decode(types, return_data)
+      values = values.map.with_index { |v, i| Base.retag_string_encoding(v, outputs[i]) }
       Result.new(success: true, values: values)
     rescue Eth::Abi::DecodingError => e
       Result.new(success: false, error: "decode failed: #{e.message}")
