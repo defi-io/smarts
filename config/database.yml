@@ -87,9 +87,11 @@ test:
 production:
   primary: &primary_production
     <<: *default
-    database: smarts_production
-    username: smarts
-    password: <%= ENV["SMARTS_DATABASE_PASSWORD"] %>
+    database: <%= ENV.fetch("POSTGRES_DB", "smarts_production") %>
+    username: <%= ENV.fetch("POSTGRES_USER", "rails") %>
+    password: <%= ENV["POSTGRES_PASSWORD"] %>
+    host: <%= ENV.fetch("DB_HOST", "localhost") %>
+    pool: <%= ENV.fetch("DB_POOL", 5) %>
   cache:
     <<: *primary_production
     database: smarts_production_cache
