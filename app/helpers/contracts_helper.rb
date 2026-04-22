@@ -63,6 +63,42 @@ module ContractsHelper
     content_tag(:span, "→ #{parts.join(', ')}", class: "text-success text-xs font-mono break-all")
   end
 
+  # User-facing block explorer base URL per supported chain. Used by
+  # dual-link renderers that want the "↗ Etherscan" counterpart to an
+  # on-smarts-md link. Returns nil for unknown chains.
+  EXPLORER_BASE_URLS = {
+    "eth"      => "https://etherscan.io",
+    "base"     => "https://basescan.org",
+    "arbitrum" => "https://arbiscan.io",
+    "optimism" => "https://optimistic.etherscan.io",
+    "polygon"  => "https://polygonscan.com"
+  }.freeze
+
+  def explorer_address_url(chain, address)
+    base = EXPLORER_BASE_URLS[chain.slug]
+    return nil unless base
+
+    "#{base}/address/#{address}"
+  end
+
+  def explorer_name(chain)
+    case chain.slug
+    when "eth"      then "Etherscan"
+    when "base"     then "Basescan"
+    when "arbitrum" then "Arbiscan"
+    when "optimism" then "Etherscan"
+    when "polygon"  then "Polygonscan"
+    else "explorer"
+    end
+  end
+
+  # Truncated "0xa0b8…eb48" for inline display. First 6 + last 4.
+  def truncate_address(addr)
+    return nil unless addr.is_a?(String) && addr.start_with?("0x") && addr.length >= 12
+
+    "#{addr[0, 6]}…#{addr[-4..]}"
+  end
+
   # Small inline marker shown next to AI-generated doc text. Returns nil if
   # the source is "real" or missing so callers can safely `<%= %>` it.
   def ai_badge(source_value)
