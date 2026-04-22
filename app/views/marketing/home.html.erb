@@ -1,0 +1,33 @@
+<div class="flex flex-col items-center w-full min-h-screen bg-gray-950 text-gray-100 fixed inset-0 z-50 overflow-auto">
+  <div class="flex-1 flex flex-col items-center justify-center text-center px-6 pt-32 pb-16">
+    <h1 class="text-7xl font-extrabold text-white tracking-tight mb-6">smarts.md</h1>
+    <p class="text-2xl text-gray-300 mb-4">Live docs for every smart contract.</p>
+    <p class="text-base text-gray-500 max-w-lg mx-auto mb-16">
+      Enter a verified contract address to generate live documentation with real-time on-chain state.
+    </p>
+
+    <%= form_with url: "/", method: :get, local: true, class: "w-full max-w-xl" do %>
+      <div class="flex gap-3">
+        <input
+          type="text"
+          name="q"
+          placeholder="eth/0x1f98..."
+          class="flex-1 px-5 py-4 rounded-xl bg-gray-800/60 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+          required
+          pattern="[a-z]+/0x[0-9a-fA-F]{40}"
+          title="Format: chain/0xAddress (e.g. eth/0x1f98...)"
+        >
+        <button
+          type="submit"
+          class="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl text-base transition-colors"
+        >
+          Go
+        </button>
+      </div>
+    <% end %>
+  </div>
+
+  <footer class="pb-8">
+    <p class="text-xs text-gray-600">Built by <a href="https://chain.dev" class="text-gray-500 hover:text-gray-400 underline">chain.dev</a></p>
+  </footer>
+</div>
