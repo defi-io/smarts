@@ -1,8 +1,83 @@
-<div class="max-w-2xl mx-auto py-16 text-center">
-  <h1 class="text-3xl font-bold mb-4">Contract Not Verified</h1>
-  <p class="text-lg opacity-70 mb-6">
-    This contract is not verified on <%= @chain.name %> explorer.
-    Smarts only supports verified contracts.
-  </p>
-  <p class="font-mono text-sm opacity-50"><%= params[:address] %></p>
+<% etherscan = explorer_address_url(@chain, @address) %>
+<% etherscan_label = explorer_name(@chain) %>
+<% native = @chain.native_symbol %>
+
+<div class="max-w-2xl mx-auto py-12 px-4">
+  <% if @inspection&.eoa? %>
+    <div class="text-center mb-8">
+      <div class="text-5xl mb-3">👤</div>
+      <h1 class="text-3xl font-bold mb-2">Wallet address</h1>
+      <p class="text-base opacity-70">
+        This is an externally owned account (EOA), not a contract.
+        Smarts documents verified smart contracts — there's nothing to show for a wallet.
+      </p>
+    </div>
+  <% elsif @inspection&.is_contract %>
+    <div class="text-center mb-8">
+      <div class="text-5xl mb-3">📄</div>
+      <h1 class="text-3xl font-bold mb-2">Unverified contract</h1>
+      <p class="text-base opacity-70">
+        This address holds contract bytecode, but the source code isn't verified on <%= etherscan_label %>.
+        Smarts can only document contracts with published source.
+      </p>
+    </div>
+  <% else %>
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold mb-2">Contract Not Verified</h1>
+      <p class="text-base opacity-70">
+        This contract is not verified on <%= @chain.name %> explorer.
+        Smarts only supports verified contracts.
+      </p>
+    </div>
+  <% end %>
+
+  <div class="card bg-base-200 border border-base-300 mb-6">
+    <div class="card-body">
+      <div class="flex items-center gap-2 flex-wrap text-sm mb-3">
+        <span class="badge badge-primary"><%= @chain.name %></span>
+        <span class="font-mono opacity-80 break-all"><%= @address %></span>
+      </div>
+
+      <% if @inspection&.ens_name %>
+        <div class="mb-3">
+          <span class="badge badge-outline">
+            ENS: <span class="font-mono ml-1"><%= @inspection.ens_name %></span>
+          </span>
+        </div>
+      <% end %>
+
+      <% if @inspection&.balance_wei %>
+        <div class="flex items-baseline gap-3 flex-wrap">
+          <span class="text-xs opacity-60">Balance</span>
+          <span class="text-lg font-mono"><%= format_native_balance(@inspection.balance_wei, native) %></span>
+          <% if @inspection.balance_wei > 0 %>
+            <span class="text-xs opacity-50 font-mono"><%= format_native_balance_precise(@inspection.balance_wei, native) %></span>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if @inspection&.tx_count %>
+        <div class="flex items-baseline gap-3 flex-wrap mt-1">
+          <span class="text-xs opacity-60" title="Nonce — outgoing transactions only. Etherscan includes incoming + internal txs, which requires an indexer we don't run.">
+            Transactions sent
+          </span>
+          <span class="text-lg font-mono"><%= number_with_delimiter(@inspection.tx_count) %></span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <% if etherscan %>
+    <div class="text-center">
+      <a href="<%= etherscan %>" target="_blank" rel="noopener" class="btn btn-primary btn-wide">
+        View on <%= etherscan_label %> ↗
+      </a>
+      <% if @inspection&.is_contract %>
+        <p class="text-xs opacity-60 mt-3">
+          If you own this contract, you can request source verification on <%= etherscan_label %>,
+          then revisit smarts.md.
+        </p>
+      <% end %>
+    </div>
+  <% end %>
 </div>

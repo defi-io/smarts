@@ -17,6 +17,8 @@ class ContractsController < ApplicationController
 
     enqueue_ai_enrichment_if_needed(@contract)
   rescue EtherscanClient::NotVerifiedError
+    @address = address
+    @inspection = inspect_address(@chain, address)
     render :not_verified, status: :not_found
   rescue EtherscanClient::Error => e
     flash.now[:alert] = "Failed to fetch contract: #{e.message}"
@@ -43,6 +45,13 @@ class ContractsController < ApplicationController
     ContractDocument::Classifier.call(contract)
   rescue => e
     Rails.logger.warn("[ContractsController] classify failed: #{e.class}: #{e.message}")
+    nil
+  end
+
+  def inspect_address(chain, address)
+    ChainReader::AddressInspector.call(chain: chain, address: address)
+  rescue => e
+    Rails.logger.warn("[ContractsController] address inspect failed: #{e.class}: #{e.message}")
     nil
   end
 

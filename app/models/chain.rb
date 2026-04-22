@@ -7,7 +7,20 @@ class Chain < ApplicationRecord
 
   ETHERSCAN_V2_BASE = "https://api.etherscan.io/v2/api"
 
+  # Gas-token symbol for each chain's native currency (shown in balance displays).
+  NATIVE_SYMBOLS = {
+    "eth"      => "ETH",
+    "base"     => "ETH",
+    "arbitrum" => "ETH",
+    "optimism" => "ETH",
+    "polygon"  => "MATIC"
+  }.freeze
+
   def etherscan_url
     ETHERSCAN_V2_BASE
+  end
+
+  def native_symbol
+    NATIVE_SYMBOLS[slug] || "ETH"
   end
 end

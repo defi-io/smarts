@@ -99,6 +99,32 @@ module ContractsHelper
     "#{addr[0, 6]}…#{addr[-4..]}"
   end
 
+  # Formats a wei amount to a human-friendly eth-units string rounded to 2dp.
+  # Returns nil for nil input.
+  def format_native_balance(wei, symbol)
+    return nil if wei.nil?
+
+    eth = wei.to_d / BigDecimal("1e18")
+    rounded = eth.round(2, BigDecimal::ROUND_DOWN)
+    whole, frac = rounded.to_s("F").split(".")
+    whole_fmt = whole.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\1,').reverse
+    frac_padded = (frac.to_s + "00")[0, 2]
+    body = frac_padded == "00" ? whole_fmt : "#{whole_fmt}.#{frac_padded}"
+    "#{body} #{symbol}"
+  end
+
+  # Higher-precision version for developers. Six decimals, no rounding-down.
+  def format_native_balance_precise(wei, symbol)
+    return nil if wei.nil?
+
+    eth = wei.to_d / BigDecimal("1e18")
+    rounded = eth.round(6, BigDecimal::ROUND_DOWN)
+    whole, frac = rounded.to_s("F").split(".")
+    whole_fmt = whole.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\1,').reverse
+    frac_padded = (frac.to_s + "000000")[0, 6]
+    "#{whole_fmt}.#{frac_padded} #{symbol}"
+  end
+
   # Small inline marker shown next to AI-generated doc text. Returns nil if
   # the source is "real" or missing so callers can safely `<%= %>` it.
   def ai_badge(source_value)

@@ -96,10 +96,14 @@
             <% data[:admin_roles].each do |r| %>
               <% addr = r[:value].to_s.downcase %>
               <% is_zero = (addr == ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS) %>
+              <% ens = (!is_zero && @chain.slug == "eth") ? ChainReader::EnsResolver.call(chain: @chain, address: addr) : nil %>
               <div>
                 <div class="text-xs opacity-60 mb-1"><%= r[:label] %></div>
                 <div class="font-mono flex items-center gap-2 flex-wrap">
                   <span><%= truncate_address(addr) %></span>
+                  <% if ens %>
+                    <span class="badge badge-outline badge-xs"><%= ens %></span>
+                  <% end %>
                   <% if is_zero %>
                     <span class="text-xs opacity-60">(none)</span>
                   <% else %>

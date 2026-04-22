@@ -300,4 +300,29 @@ class ContractsHelperTest < ActionView::TestCase
     assert_nil truncate_address(42)
     assert_nil truncate_address("0xabc") # too short to truncate meaningfully
   end
+
+  # ---------- format_native_balance / _precise ----------
+
+  test "format_native_balance renders 2dp and strips trailing .00" do
+    # 1.8 ETH exactly
+    assert_equal "1.80 ETH", format_native_balance(BigDecimal("1.8") * BigDecimal("1e18"), "ETH")
+    # whole number, should drop .00
+    assert_equal "1,000 ETH", format_native_balance(1_000 * 10**18, "ETH")
+    # sub-cent rounds DOWN, not up
+    assert_equal "0 ETH", format_native_balance(9_000_000_000_000_000, "ETH") # 0.009 ETH
+  end
+
+  test "format_native_balance returns nil for nil input" do
+    assert_nil format_native_balance(nil, "ETH")
+  end
+
+  test "format_native_balance_precise renders 6dp padded" do
+    assert_equal "1.800000 ETH", format_native_balance_precise(BigDecimal("1.8") * BigDecimal("1e18"), "ETH")
+    assert_equal "0.009000 ETH", format_native_balance_precise(9_000_000_000_000_000, "ETH")
+    assert_equal "1,000.000000 ETH", format_native_balance_precise(1_000 * 10**18, "ETH")
+  end
+
+  test "format_native_balance handles MATIC symbol" do
+    assert_equal "5.50 MATIC", format_native_balance(BigDecimal("5.5") * BigDecimal("1e18"), "MATIC")
+  end
 end

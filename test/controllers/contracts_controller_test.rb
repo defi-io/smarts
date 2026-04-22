@@ -43,8 +43,32 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
       headers: { "Content-Type" => "application/json" }
     )
 
-    get contract_path(chain: "eth", address: "0x0000000000000000000000000000000000000001")
+    stub_class_method(ChainReader::AddressInspector, :call,
+      ->(**_) { ChainReader::AddressInspector::Result.new(is_contract: true, balance_wei: 0, tx_count: 0, ens_name: nil) }) do
+      get contract_path(chain: "eth", address: "0x0000000000000000000000000000000000000001")
+    end
     assert_response :not_found
+  end
+
+  test "not_verified page renders wallet-address copy when inspection reports an EOA" do
+    stub_request(:get, /api\.etherscan\.io.*getsourcecode/).to_return(
+      status: 200,
+      body: { "status" => "1", "message" => "OK", "result" => [ { "ABI" => "Contract source code not verified" } ] }.to_json,
+      headers: { "Content-Type" => "application/json" }
+    )
+
+    eoa_result = ChainReader::AddressInspector::Result.new(
+      is_contract: false, balance_wei: 1_800_000_000_000_000_000, tx_count: 42, ens_name: "vitalik.eth"
+    )
+    stub_class_method(ChainReader::AddressInspector, :call, ->(**_) { eoa_result }) do
+      get contract_path(chain: "eth", address: "0xd8da6bf26964af9d7eed9e03e53415d37aa96045")
+    end
+
+    assert_response :not_found
+    assert_match "Wallet address", response.body
+    assert_match "vitalik.eth", response.body
+    assert_match "1.80 ETH", response.body
+    assert_match "Transactions sent", response.body
   end
 
   test "show returns 404 for unknown chain" do
