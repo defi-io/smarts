@@ -261,4 +261,43 @@ class ContractsHelperTest < ActionView::TestCase
     assert_includes html, "55,046,395,721.80 USDC"
     refute_includes html, "55,046,395,721,805,492"
   end
+
+  # ---------- explorer_address_url / explorer_name / truncate_address ----------
+
+  test "explorer_address_url maps supported chain slugs to their block explorer" do
+    eth      = OpenStruct.new(slug: "eth")
+    base     = OpenStruct.new(slug: "base")
+    arbitrum = OpenStruct.new(slug: "arbitrum")
+    optimism = OpenStruct.new(slug: "optimism")
+    polygon  = OpenStruct.new(slug: "polygon")
+
+    assert_equal "https://etherscan.io/address/0xabc",            explorer_address_url(eth,      "0xabc")
+    assert_equal "https://basescan.org/address/0xabc",            explorer_address_url(base,     "0xabc")
+    assert_equal "https://arbiscan.io/address/0xabc",             explorer_address_url(arbitrum, "0xabc")
+    assert_equal "https://optimistic.etherscan.io/address/0xabc", explorer_address_url(optimism, "0xabc")
+    assert_equal "https://polygonscan.com/address/0xabc",         explorer_address_url(polygon,  "0xabc")
+  end
+
+  test "explorer_address_url returns nil for unknown chain slug" do
+    assert_nil explorer_address_url(OpenStruct.new(slug: "solana"), "0xabc")
+  end
+
+  test "explorer_name returns the human explorer name per chain" do
+    assert_equal "Etherscan",   explorer_name(OpenStruct.new(slug: "eth"))
+    assert_equal "Basescan",    explorer_name(OpenStruct.new(slug: "base"))
+    assert_equal "Arbiscan",    explorer_name(OpenStruct.new(slug: "arbitrum"))
+    assert_equal "Etherscan",   explorer_name(OpenStruct.new(slug: "optimism"))
+    assert_equal "Polygonscan", explorer_name(OpenStruct.new(slug: "polygon"))
+    assert_equal "explorer",    explorer_name(OpenStruct.new(slug: "zzz"))
+  end
+
+  test "truncate_address shortens long 0x addresses to 6+4 with ellipsis" do
+    assert_equal "0xa0b8…eb48", truncate_address("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+  end
+
+  test "truncate_address returns nil for non-strings or malformed input" do
+    assert_nil truncate_address(nil)
+    assert_nil truncate_address(42)
+    assert_nil truncate_address("0xabc") # too short to truncate meaningfully
+  end
 end

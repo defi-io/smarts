@@ -63,6 +63,63 @@
           <div class="text-xl font-mono"><%= data[:decimals] %></div>
         </div>
       </div>
+
+      <% if (data[:admin_status].present? || data[:admin_roles].present?) %>
+        <div class="divider my-4"></div>
+        <div class="text-xs opacity-60 font-mono mb-3">Admin controls</div>
+
+        <% if data[:admin_status].present? %>
+          <div class="flex flex-wrap gap-2 mb-4">
+            <% data[:admin_status].each do |s| %>
+              <% if s[:value] == true && s[:severity] == :critical %>
+                <span class="badge badge-error gap-1" title="<%= s[:key] %>() returned true">
+                  ⚠ <%= s[:label].upcase %>
+                </span>
+              <% elsif s[:value] == false %>
+                <span class="badge badge-ghost opacity-60" title="<%= s[:key] %>() returned false">
+                  <%= s[:label] %>: no
+                </span>
+              <% elsif s[:value].is_a?(String) %>
+                <%# upgradedAddress %>
+                <% is_zero = (s[:value].downcase == ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS) %>
+                <span class="badge <%= is_zero ? 'badge-ghost opacity-60' : 'badge-warning' %> gap-1 font-mono">
+                  <%= s[:label] %>: <%= truncate_address(s[:value]) %>
+                  <% if is_zero %>(none)<% end %>
+                </span>
+              <% end %>
+            <% end %>
+          </div>
+        <% end %>
+
+        <% if data[:admin_roles].present? %>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <% data[:admin_roles].each do |r| %>
+              <% addr = r[:value].to_s.downcase %>
+              <% is_zero = (addr == ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS) %>
+              <div>
+                <div class="text-xs opacity-60 mb-1"><%= r[:label] %></div>
+                <div class="font-mono flex items-center gap-2 flex-wrap">
+                  <span><%= truncate_address(addr) %></span>
+                  <% if is_zero %>
+                    <span class="text-xs opacity-60">(none)</span>
+                  <% else %>
+                    <% etherscan = explorer_address_url(@chain, addr) %>
+                    <% if etherscan %>
+                      <a href="<%= etherscan %>" target="_blank" rel="noopener"
+                         class="text-xs opacity-70 hover:opacity-100 hover:text-primary">
+                        ↗ <%= explorer_name(@chain) %>
+                      </a>
+                    <% end %>
+                    <%= link_to "→ smarts", contract_path(chain: @chain.slug, address: addr),
+                          class: "text-xs opacity-70 hover:opacity-100 hover:text-primary",
+                          title: "View on smarts.md (if verified)" %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      <% end %>
     </div>
   </div>
 <% end %>

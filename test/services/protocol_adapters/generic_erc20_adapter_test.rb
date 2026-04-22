@@ -166,4 +166,170 @@ class ProtocolAdapters::GenericErc20AdapterTest < ActiveSupport::TestCase
     adapter = ProtocolAdapters::GenericErc20Adapter.new(@contract)
     assert_equal "42 CULT", adapter.send(:format_supply, 42, 0, "CULT")
   end
+
+  # ---------- admin_functions_in_abi: ABI-gated probing ----------
+
+  def fn_zero_arg(name, type)
+    { "type" => "function", "name" => name, "inputs" => [], "outputs" => [ { "type" => type } ], "stateMutability" => "view" }
+  end
+
+  test "admin_functions_in_abi selects only admin fns present in the ABI" do
+    abi = ERC20_ABI + [
+      fn_zero_arg("paused", "bool"),
+      fn_zero_arg("owner",  "address")
+      # masterMinter / pauser / blacklister / rescuer / deprecated / upgradedAddress absent
+    ]
+    c = Contract.new(chain: @chain, address: USDC_ADDRESS, abi: abi)
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(c)
+
+    status = adapter.send(:admin_functions_in_abi, ProtocolAdapters::GenericErc20Adapter::ADMIN_STATUS_FUNCTIONS)
+    roles  = adapter.send(:admin_functions_in_abi, ProtocolAdapters::GenericErc20Adapter::ADMIN_ROLE_FUNCTIONS)
+
+    assert_equal [ "paused" ], status.map { |s| s[:abi]["name"] }
+    assert_equal [ "owner" ],  roles.map  { |r| r[:abi]["name"] }
+  end
+
+  # Regression guard: the function hash passed to Multicall3Client::Call MUST
+  # use string keys ("name", "inputs", "outputs") because ChainReader::Base
+  # reads them as strings. If a future refactor silently switches to symbol
+  # keys, this test will fail early rather than producing runtime-empty admin
+  # arrays like the 2026-04-22 bug.
+  test "admin spec abi hashes use string keys compatible with ChainReader" do
+    all = ProtocolAdapters::GenericErc20Adapter::ADMIN_STATUS_FUNCTIONS +
+          ProtocolAdapters::GenericErc20Adapter::ADMIN_ROLE_FUNCTIONS
+
+    all.each do |spec|
+      abi = spec[:abi]
+      assert abi.key?("name"),    "#{spec.inspect} missing string key 'name'"
+      assert abi.key?("inputs"),  "#{spec.inspect} missing string key 'inputs'"
+      assert abi.key?("outputs"), "#{spec.inspect} missing string key 'outputs'"
+      assert_equal [], abi["inputs"], "admin fns must be zero-arg"
+
+      # ChainReader::Base.function_signature must produce a valid sig like
+      # "paused()" — if it produces "()" because the name key is wrong, the
+      # whole admin multicall silently fails.
+      sig = ChainReader::Base.function_signature(abi)
+      refute_equal "()", sig, "function_signature produced bare '()' for #{spec.inspect}"
+      assert_match(/\A[a-zA-Z_]\w*\(\)\z/, sig, "unexpected sig shape: #{sig}")
+    end
+  end
+
+  test "admin_functions_in_abi rejects matches with wrong output type" do
+    # A contract with a paused() that returns uint256 (not bool) — don't probe it
+    abi = ERC20_ABI + [ fn_zero_arg("paused", "uint256") ]
+    c = Contract.new(chain: @chain, address: USDC_ADDRESS, abi: abi)
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(c)
+
+    status = adapter.send(:admin_functions_in_abi, ProtocolAdapters::GenericErc20Adapter::ADMIN_STATUS_FUNCTIONS)
+    assert_empty status
+  end
+
+  test "admin_functions_in_abi rejects matches that take arguments" do
+    paused_with_arg = { "type" => "function", "name" => "paused",
+                        "inputs" => [ { "type" => "uint8" } ],
+                        "outputs" => [ { "type" => "bool" } ], "stateMutability" => "view" }
+    c = Contract.new(chain: @chain, address: USDC_ADDRESS, abi: ERC20_ABI + [ paused_with_arg ])
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(c)
+
+    status = adapter.send(:admin_functions_in_abi, ProtocolAdapters::GenericErc20Adapter::ADMIN_STATUS_FUNCTIONS)
+    assert_empty status
+  end
+
+  # ---------- panel_data: admin fields flow ----------
+
+  def usdc_admin_abi
+    ERC20_ABI + [
+      fn_zero_arg("paused",       "bool"),
+      fn_zero_arg("owner",        "address"),
+      fn_zero_arg("pauser",       "address"),
+      fn_zero_arg("blacklister",  "address"),
+      fn_zero_arg("masterMinter", "address"),
+      fn_zero_arg("rescuer",      "address")
+    ]
+  end
+
+  test "panel_data surfaces admin status + roles when admin functions exist in ABI" do
+    contract = Contract.new(chain: @chain, address: USDC_ADDRESS, abi: usdc_admin_abi)
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(contract)
+
+    stub = lambda do |chain:, calls:|
+      # 4 core + 1 status (paused) + 5 roles = 10 results
+      [
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 6 ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 10**18 ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ false ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "0xcee284f754e854890e311e3280b767f80797601d" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "0x5db0115f3b72d19cea34dd697cf412ff86dc7e1b" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "0x5db0115f3b72d19cea34dd697cf412ff86dc7e1b" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "0xe982615d461dd5cd06575bbea87624fda4e3de17" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS ])
+      ]
+    end
+    no_price = ->(**_) { {} }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, stub) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, no_price) do
+        data = adapter.panel_data
+
+        assert_equal [ "paused" ], data[:admin_status].map { |s| s[:key] }
+        assert_equal false, data[:admin_status].first[:value]
+        assert_equal :critical, data[:admin_status].first[:severity]
+
+        role_keys = data[:admin_roles].map { |r| r[:key] }
+        assert_equal %w[owner masterMinter pauser blacklister rescuer], role_keys
+
+        rescuer = data[:admin_roles].find { |r| r[:key] == "rescuer" }
+        assert_equal ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS, rescuer[:value]
+      end
+    end
+  end
+
+  test "panel_data returns empty admin arrays when ABI has no admin functions" do
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(@contract)
+    stub = lambda do |chain:, calls:|
+      assert_equal 4, calls.length, "must only call the 4 core ERC-20 fns when ABI has no admin fns"
+      [
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 6 ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 1_000 * 10**6 ])
+      ]
+    end
+    no_price = ->(**_) { {} }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, stub) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, no_price) do
+        data = adapter.panel_data
+        assert_empty data[:admin_status]
+        assert_empty data[:admin_roles]
+      end
+    end
+  end
+
+  test "panel_data marks paused=true entries and drops failed admin calls" do
+    contract = Contract.new(chain: @chain, address: USDC_ADDRESS, abi: ERC20_ABI + [ fn_zero_arg("paused", "bool"), fn_zero_arg("owner", "address") ])
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(contract)
+
+    stub = lambda do |chain:, calls:|
+      [
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "Token" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "TKN" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 18 ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 10**18 ]),
+        ChainReader::Multicall3Client::Result.new(success: true,  values: [ true ]),   # paused = true
+        ChainReader::Multicall3Client::Result.new(success: false, error: "reverted")  # owner call reverts
+      ]
+    end
+    no_price = ->(**_) { {} }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, stub) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, no_price) do
+        data = adapter.panel_data
+        assert_equal true, data[:admin_status].first[:value]
+        assert_empty data[:admin_roles], "failed role calls must not appear in admin_roles"
+      end
+    end
+  end
 end
