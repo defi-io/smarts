@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Source SVG for the default Open Graph / Twitter card (1200x630).
+  Regenerate the PNG with:
+
+    rsvg-convert public/og-default.svg -o public/og-default.png
+
+  Kept in public/ so the SVG is viewable alongside the rendered PNG; both
+  are committed. Colors mirror the gray-950 / blue-400 / gray-400 palette
+  used on the marketing site.
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="630"
+     viewBox="0 0 1200 630"
+     font-family="'Adwaita Sans', 'Inter', 'Helvetica Neue', Arial, sans-serif">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#030712"/>
+
+  <!-- Subtle diagonal accent bar bottom-left -->
+  <rect x="80" y="538" width="110" height="4" fill="#60a5fa"/>
+
+  <!-- Wordmark top-left -->
+  <text x="80" y="125"
+        font-family="'JetBrains Mono', 'IBM Plex Mono', 'Menlo', monospace"
+        font-size="40" font-weight="500" fill="#60a5fa">
+    smarts.md
+  </text>
+
+  <!-- Headline (two lines, left-aligned, big and bold) -->
+  <text x="80" y="295" font-size="96" font-weight="800" fill="#f9fafb">
+    Live docs for every
+  </text>
+  <text x="80" y="395" font-size="96" font-weight="800" fill="#f9fafb">
+    smart contract.
+  </text>
+
+  <!-- Subtitle -->
+  <text x="80" y="470" font-size="34" font-weight="400" fill="#9ca3af">
+    Live on-chain state for any verified contract.
+  </text>
+  <text x="80" y="512" font-size="34" font-weight="400" fill="#9ca3af">
+    Point your AI agent at an address. Five MCP tools.
+  </text>
+
+  <!-- URL bottom-left (paired with the accent bar) -->
+  <text x="80" y="583"
+        font-family="'JetBrains Mono', 'IBM Plex Mono', 'Menlo', monospace"
+        font-size="24" font-weight="400" fill="#6b7280">
+    smarts.md/eth/0x…
+  </text>
+
+  <!-- MCP chip bottom-right -->
+  <g transform="translate(1120 570)">
+    <rect x="-170" y="-30" width="170" height="44" rx="22"
+          fill="none" stroke="#60a5fa" stroke-width="2"/>
+    <text x="-85" y="-1" font-size="22" font-weight="600" fill="#60a5fa"
+          text-anchor="middle"
+          font-family="'JetBrains Mono', 'IBM Plex Mono', 'Menlo', monospace">
+      MCP ready
+    </text>
+  </g>
+</svg>

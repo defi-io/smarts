@@ -6,6 +6,16 @@ class SeoHelperTest < ActionView::TestCase
     assert_equal SeoHelper::DEFAULT_TITLE, page_title
   end
 
+  # Guards against shortening the title back into "too short" SEO territory.
+  # The opengraph.xyz audit flagged anything under 50 chars as suboptimal
+  # (truncated in SERP, weak snippet signal); over 60 gets cut off at display.
+  # Locks the range without ossifying the exact wording.
+  test "DEFAULT_TITLE stays within the 50-60 char SEO-optimal range" do
+    len = SeoHelper::DEFAULT_TITLE.length
+    assert (50..60).cover?(len),
+      "DEFAULT_TITLE is #{len} chars (#{SeoHelper::DEFAULT_TITLE.inspect}); optimal is 50–60"
+  end
+
   test "page_title appends site suffix to a custom title" do
     seo_meta title: "Foo"
     assert_equal "Foo | smarts.md", page_title
@@ -34,8 +44,8 @@ class SeoHelperTest < ActionView::TestCase
     assert_match(/<meta property="og:description" content="Bar">/, html)
     assert_match(/<meta property="og:url" content="https:\/\/smarts.md\/foo">/, html)
     assert_match(/<meta property="og:type" content="website">/, html)
-    assert_match(/<meta property="og:image" content="https:\/\/smarts.md\/icon.png">/, html)
-    assert_match(/<meta name="twitter:card" content="summary">/, html)
+    assert_match(/<meta property="og:image" content="https:\/\/smarts.md\/og-default.png">/, html)
+    assert_match(/<meta name="twitter:card" content="summary_large_image">/, html)
     assert_match(/<meta name="twitter:title" content="Foo \| smarts.md">/, html)
   end
 

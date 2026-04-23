@@ -17,6 +17,20 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
   # Declares the homepage search form to Google so the sitelinks searchbox
   # becomes eligible on brand queries. If this JSON-LD is lost, the searchbox
   # quietly stops appearing — no error, just missing SERP surface area.
+  # Guards the default OG card. If someone deletes the PNG (or the SVG build
+  # step goes out of sync), every social share silently loses its card. Path
+  # is derived from the helper constant so renaming one without the other
+  # fails the test — no silent orphan file.
+  test "og-default.png asset is served at the URL the SEO helper advertises" do
+    path = URI.parse(SeoHelper::DEFAULT_OG_IMAGE).path
+    get path
+
+    assert_response :success
+    assert_equal "image/png", response.media_type
+    # PNG magic header: 8 bytes starting with 89 50 4E 47 (‰PNG)
+    assert_equal "\x89PNG".b, response.body.byteslice(0, 4)
+  end
+
   test "home emits WebSite + SearchAction JSON-LD so Google's sitelinks searchbox is eligible" do
     get root_path
     assert_response :success

@@ -2,7 +2,7 @@
 
 <%
   contract_name = @contract.name.presence || "Unknown Contract"
-  seo_title = "#{contract_name} on #{@chain.name} — live contract docs"
+  seo_title = "#{contract_name} on #{@chain.name} — live on-chain contract docs"
   seo_desc  =
     if @classification&.display_name.present?
       "Live on-chain docs for #{contract_name} (#{@classification.display_name}) on #{@chain.name}. Supply, admin controls, live state, and source — read straight from the chain."

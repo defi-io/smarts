@@ -57,10 +57,10 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     get contract_path(chain: "eth", address: contract.address)
 
     assert_response :success
-    assert_match %r{<meta property="og:title" content="Uni on Ethereum — live contract docs \| smarts.md">}, response.body
+    assert_match %r{<meta property="og:title" content="Uni on Ethereum — live on-chain contract docs \| smarts.md">}, response.body
     assert_match %r{<meta property="og:description"[^>]+Uni}, response.body
     assert_match %r{<meta property="og:type" content="website">}, response.body
-    assert_match %r{<meta name="twitter:card" content="summary">}, response.body
+    assert_match %r{<meta name="twitter:card" content="summary_large_image">}, response.body
   end
 
   test "contract page emits JSON-LD WebPage + SoftwareApplication block" do

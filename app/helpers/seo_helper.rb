@@ -1,9 +1,9 @@
 module SeoHelper
   SITE_NAME        = "Smarts".freeze
   SITE_URL         = "https://smarts.md".freeze
-  DEFAULT_TITLE    = "Smarts — Live docs for every smart contract".freeze
+  DEFAULT_TITLE    = "Smarts — Live on-chain docs for every smart contract".freeze
   DEFAULT_DESC     = "Live on-chain docs for every verified smart contract on Ethereum, Base, Arbitrum, Optimism, and Polygon. Point your AI agent at one URL.".freeze
-  DEFAULT_OG_IMAGE = "#{SITE_URL}/icon.png".freeze
+  DEFAULT_OG_IMAGE = "#{SITE_URL}/og-default.png".freeze
 
   # Set per-page SEO fields from a view. Any omitted field falls back to site
   # defaults when rendered.
@@ -41,7 +41,7 @@ module SeoHelper
       tag.meta(property: "og:url",        content: page_canonical_url),
       tag.meta(property: "og:type",       content: page_og_type),
       tag.meta(property: "og:image",      content: DEFAULT_OG_IMAGE),
-      tag.meta(name: "twitter:card",        content: "summary"),
+      tag.meta(name: "twitter:card",        content: "summary_large_image"),
       tag.meta(name: "twitter:title",       content: page_title),
       tag.meta(name: "twitter:description", content: page_description),
       tag.meta(name: "twitter:image",       content: DEFAULT_OG_IMAGE)
