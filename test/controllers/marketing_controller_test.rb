@@ -21,9 +21,11 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
     end
     assert_match "DEX", response.body # matches "DEX & Wrapped"
 
-    # Spot-check a few featured items render as clickable links to the right URL
+    # Spot-check a few featured items render as clickable links. Items with
+    # a slug link via `/{slug}`, items without link via `/{chain}/{address}`.
     MarketingController::FEATURED.sample(3).each do |item|
-      expected_href = "/#{item[:chain]}/#{item[:address]}"
+      slug = ContractSlugs.for(item[:chain], item[:address])
+      expected_href = slug ? "/#{slug}" : "/#{item[:chain]}/#{item[:address]}"
       assert_match expected_href, response.body,
                    "expected link to #{expected_href} on home page"
     end

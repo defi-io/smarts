@@ -12,7 +12,8 @@ class ReadContractStateToolTest < ActiveSupport::TestCase
   end
 
   test "returns error when contract not indexed" do
-    result = @tool.call(chain: "eth", address: "0x" + "1" * 40, function_name: "totalSupply")
+    # Deliberately an address that isn't in contracts.yml fixture.
+    result = @tool.call(chain: "eth", address: "0x" + "f" * 40, function_name: "totalSupply")
     assert_match(/not indexed/, result[:error])
   end
 
