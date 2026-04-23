@@ -14,6 +14,22 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
     assert_match %r{<a href="https://mcp\.smarts\.md/"[^>]*>connect your AI agent</a>}, response.body
   end
 
+  # Declares the homepage search form to Google so the sitelinks searchbox
+  # becomes eligible on brand queries. If this JSON-LD is lost, the searchbox
+  # quietly stops appearing — no error, just missing SERP surface area.
+  test "home emits WebSite + SearchAction JSON-LD so Google's sitelinks searchbox is eligible" do
+    get root_path
+    assert_response :success
+
+    website = response.body.scan(%r{<script type="application/ld\+json">(.+?)</script>}m)
+                           .map { |m| JSON.parse(m[0]) }
+                           .find { |j| j["@type"] == "WebSite" }
+
+    assert website, "expected a WebSite JSON-LD on the home page"
+    assert_equal "SearchAction", website["potentialAction"]["@type"]
+    assert_match(/\{search_term_string\}/, website["potentialAction"]["target"]["urlTemplate"])
+  end
+
   test "home renders the curated featured section" do
     get root_path
     assert_response :success

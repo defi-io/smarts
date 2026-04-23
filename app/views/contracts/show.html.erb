@@ -16,6 +16,10 @@
 
 <% content_for :head do %>
   <%= contract_json_ld(contract: @contract, chain: @chain, classification: @classification) %>
+  <%= breadcrumb_json_ld([
+    { name: "Smarts", url: "#{SeoHelper::SITE_URL}/" },
+    { name: "#{contract_name} on #{@chain.name}", url: seo_canonical }
+  ]) %>
 <% end %>
 
 <div class="max-w-5xl mx-auto py-8 px-4">

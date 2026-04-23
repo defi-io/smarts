@@ -68,16 +68,32 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     get contract_path(chain: "eth", address: contract.address)
 
     assert_response :success
-    ld_match = response.body.match(%r{<script type="application/ld\+json">(.+?)</script>}m)
-    assert ld_match, "expected a JSON-LD script tag in the response"
-
-    data = JSON.parse(ld_match[1])
-    assert_equal "WebPage", data["@type"]
+    data = response.body.scan(%r{<script type="application/ld\+json">(.+?)</script>}m)
+                        .map { |m| JSON.parse(m[0]) }
+                        .find { |j| j["@type"] == "WebPage" }
+    assert data, "expected a WebPage JSON-LD on the contract page"
     assert_equal "SoftwareApplication", data["about"]["@type"]
     assert_equal "SmartContract", data["about"]["applicationCategory"]
     assert_equal "Ethereum", data["about"]["operatingSystem"]
     assert_equal contract.address, data["about"]["identifier"]
     assert_equal "Uni", data["about"]["name"]
+    # softwareVersion comes from contract.compiler_version — locks the helper→view wiring.
+    assert_equal contract.compiler_version, data["about"]["softwareVersion"]
+  end
+
+  test "contract page emits BreadcrumbList JSON-LD with Smarts → contract trail" do
+    contract = contracts(:uni_token)
+    get contract_path(chain: "eth", address: contract.address)
+
+    breadcrumb = response.body.scan(%r{<script type="application/ld\+json">(.+?)</script>}m)
+                               .map { |m| JSON.parse(m[0]) }
+                               .find { |j| j["@type"] == "BreadcrumbList" }
+
+    assert breadcrumb, "expected a BreadcrumbList JSON-LD on the contract page"
+    assert_equal 2, breadcrumb["itemListElement"].size
+    assert_equal "Smarts", breadcrumb["itemListElement"][0]["name"]
+    assert_equal "Uni on Ethereum", breadcrumb["itemListElement"][1]["name"]
+    assert_match %r{smarts\.md/}, breadcrumb["itemListElement"][1]["item"]
   end
 
   # show.html.erb picks between two description templates based on whether
