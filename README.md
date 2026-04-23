@@ -39,4 +39,4 @@ Rails 8 + Postgres 17 + Hotwire + Tailwind, deployed via Kamal 2 to Hetzner. No 
 
 ## License
 
-Source-available; license decision pending before open-sourcing.
+MIT — see [LICENSE](LICENSE).
