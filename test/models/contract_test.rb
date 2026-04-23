@@ -130,6 +130,43 @@ class ContractTest < ActiveSupport::TestCase
     assert_equal "real", doc["source"]["params"]["from"]
   end
 
+  # ---------- license (SPDX parsing) ----------
+
+  test "license returns nil when source_code is blank" do
+    contract = contracts(:empty_contract)
+    contract.update!(source_code: nil)
+    assert_nil contract.license
+  end
+
+  test "license extracts SPDX identifier from Solidity source" do
+    contract = contracts(:uni_token)
+    contract.update!(source_code: "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\ncontract Foo {}")
+    assert_equal "MIT", contract.license
+  end
+
+  test "license handles common SPDX identifiers with dots, hyphens, and plus signs" do
+    contract = contracts(:uni_token)
+    { "BUSL-1.1"        => "// SPDX-License-Identifier: BUSL-1.1\n",
+      "Apache-2.0"      => "// SPDX-License-Identifier: Apache-2.0\n",
+      "GPL-3.0+"        => "// SPDX-License-Identifier: GPL-3.0+\n",
+      "AGPL-3.0-only"   => "// SPDX-License-Identifier: AGPL-3.0-only\n" }.each do |expected, source|
+      contract.update!(source_code: source)
+      assert_equal expected, contract.license, "failed to parse #{expected.inspect}"
+    end
+  end
+
+  test "license returns first identifier from a compound OR expression" do
+    contract = contracts(:uni_token)
+    contract.update!(source_code: "// SPDX-License-Identifier: MIT OR Apache-2.0\n")
+    assert_equal "MIT", contract.license
+  end
+
+  test "license returns nil for pre-SPDX source (older contracts)" do
+    contract = contracts(:uni_token)
+    contract.update!(source_code: "pragma solidity ^0.5.16;\n// Subject to the MIT license.\ncontract Foo {}")
+    assert_nil contract.license, "free-text MIT mentions must not be treated as a valid license identifier"
+  end
+
   test "all_functions_have_natspec? is true only when every function has a notice" do
     contract = contracts(:uni_token)
     all_function_names = (contract.view_functions + contract.write_functions).map { |f| f["name"] }

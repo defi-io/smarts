@@ -10,6 +10,20 @@ class Contract < ApplicationRecord
     "#{address[0..5]}...#{address[-4..]}"
   end
 
+  # SPDX license identifier parsed from the source code, when present. Solidity
+  # convention since 2020 is a comment at the top of each file:
+  #   // SPDX-License-Identifier: MIT
+  # Older contracts (and some multi-file wrappers that don't forward the
+  # identifier) return nil here, which is fine — callers should omit the field.
+  SPDX_PATTERN = /SPDX-License-Identifier:\s*([A-Za-z0-9.\-+]+)/i
+
+  def license
+    return nil if source_code.blank?
+
+    match = source_code.match(SPDX_PATTERN)
+    match && match[1]
+  end
+
   def view_functions
     return [] unless abi.is_a?(Array)
 

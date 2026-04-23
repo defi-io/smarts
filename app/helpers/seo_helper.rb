@@ -58,8 +58,10 @@ module SeoHelper
       "operatingSystem"     => chain.name,
       "identifier"          => contract.address
     }
-    app["additionalType"] = classification.display_name if classification&.display_name.present?
-    app["description"]    = classification.description  if classification&.description.present?
+    app["additionalType"]  = classification.display_name if classification&.display_name.present?
+    app["description"]     = classification.description  if classification&.description.present?
+    app["softwareVersion"] = contract.compiler_version   if contract.compiler_version.present?
+    app["license"]         = contract.license            if contract.respond_to?(:license) && contract.license.present?
 
     data = {
       "@context"    => "https://schema.org",
@@ -72,6 +74,42 @@ module SeoHelper
       "about"       => app
     }
 
+    render_json_ld(data)
+  end
+
+  # BreadcrumbList schema — Google renders this as the breadcrumb trail in
+  # SERP results. `items` is an ordered array of `{name:, url:}`.
+  def breadcrumb_json_ld(items)
+    data = {
+      "@context"        => "https://schema.org",
+      "@type"           => "BreadcrumbList",
+      "itemListElement" => items.each_with_index.map do |item, i|
+        { "@type" => "ListItem", "position" => i + 1, "name" => item[:name], "item" => item[:url] }
+      end
+    }
+    render_json_ld(data)
+  end
+
+  # WebSite schema with SearchAction — emitted on the homepage. Makes us
+  # eligible for Google's sitelinks searchbox on brand queries.
+  def home_json_ld
+    data = {
+      "@context" => "https://schema.org",
+      "@type"    => "WebSite",
+      "name"     => SITE_NAME,
+      "url"      => "#{SITE_URL}/",
+      "potentialAction" => {
+        "@type"       => "SearchAction",
+        "target"      => { "@type" => "EntryPoint", "urlTemplate" => "#{SITE_URL}/?q={search_term_string}" },
+        "query-input" => "required name=search_term_string"
+      }
+    }
+    render_json_ld(data)
+  end
+
+  private
+
+  def render_json_ld(data)
     tag.script(ERB::Util.json_escape(data.to_json).html_safe, type: "application/ld+json")
   end
 end

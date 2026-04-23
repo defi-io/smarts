@@ -95,4 +95,63 @@ class SeoHelperTest < ActionView::TestCase
     # Only one opening script tag should be present — json_escape converts `</` into `<\/`.
     assert_equal 1, html.scan("<script").size
   end
+
+  test "contract_json_ld includes softwareVersion and license when contract has them" do
+    contract = OpenStruct.new(
+      name: "USD Coin",
+      address: "0xa0b8",
+      compiler_version: "v0.8.20+commit.a1b79de6",
+      license: "MIT"
+    )
+    chain = OpenStruct.new(name: "Ethereum")
+    seo_meta canonical: "https://smarts.md/usdc-eth"
+
+    html = contract_json_ld(contract: contract, chain: chain, classification: nil)
+    data = JSON.parse(html.match(%r{<script[^>]*>(.+)</script>}m)[1])
+
+    assert_equal "v0.8.20+commit.a1b79de6", data["about"]["softwareVersion"]
+    assert_equal "MIT", data["about"]["license"]
+  end
+
+  test "contract_json_ld omits softwareVersion and license when blank" do
+    contract = OpenStruct.new(name: "Thing", address: "0xabc", compiler_version: nil, license: nil)
+    chain = OpenStruct.new(name: "Ethereum")
+    seo_meta canonical: "https://smarts.md/eth/0xabc"
+
+    html = contract_json_ld(contract: contract, chain: chain, classification: nil)
+    data = JSON.parse(html.match(%r{<script[^>]*>(.+)</script>}m)[1])
+
+    refute data["about"].key?("softwareVersion")
+    refute data["about"].key?("license")
+  end
+
+  test "breadcrumb_json_ld emits ordered BreadcrumbList with positions" do
+    html = breadcrumb_json_ld([
+      { name: "Smarts", url: "https://smarts.md/" },
+      { name: "UNI on Ethereum", url: "https://smarts.md/uni-eth" }
+    ])
+    data = JSON.parse(html.match(%r{<script[^>]*>(.+)</script>}m)[1])
+
+    assert_equal "BreadcrumbList", data["@type"]
+    assert_equal 2, data["itemListElement"].size
+    assert_equal 1, data["itemListElement"][0]["position"]
+    assert_equal "Smarts", data["itemListElement"][0]["name"]
+    assert_equal "https://smarts.md/", data["itemListElement"][0]["item"]
+    assert_equal 2, data["itemListElement"][1]["position"]
+    assert_equal "UNI on Ethereum", data["itemListElement"][1]["name"]
+  end
+
+  test "home_json_ld emits a WebSite with a SearchAction matching the homepage search form" do
+    html = home_json_ld
+    data = JSON.parse(html.match(%r{<script[^>]*>(.+)</script>}m)[1])
+
+    assert_equal "WebSite", data["@type"]
+    assert_equal "Smarts", data["name"]
+    assert_equal "https://smarts.md/", data["url"]
+
+    action = data["potentialAction"]
+    assert_equal "SearchAction", action["@type"]
+    assert_equal "https://smarts.md/?q={search_term_string}", action["target"]["urlTemplate"]
+    assert_equal "required name=search_term_string", action["query-input"]
+  end
 end

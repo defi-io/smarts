@@ -80,6 +80,21 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Uni", data["about"]["name"]
   end
 
+  test "contract page emits BreadcrumbList JSON-LD with Smarts → contract trail" do
+    contract = contracts(:uni_token)
+    get contract_path(chain: "eth", address: contract.address)
+
+    breadcrumb = response.body.scan(%r{<script type="application/ld\+json">(.+?)</script>}m)
+                               .map { |m| JSON.parse(m[0]) }
+                               .find { |j| j["@type"] == "BreadcrumbList" }
+
+    assert breadcrumb, "expected a BreadcrumbList JSON-LD on the contract page"
+    assert_equal 2, breadcrumb["itemListElement"].size
+    assert_equal "Smarts", breadcrumb["itemListElement"][0]["name"]
+    assert_equal "Uni on Ethereum", breadcrumb["itemListElement"][1]["name"]
+    assert_match %r{smarts\.md/}, breadcrumb["itemListElement"][1]["item"]
+  end
+
   # show.html.erb picks between two description templates based on whether
   # the classifier returned anything. Without this test the unclassified
   # branch would only surface in production on some weird contract.
