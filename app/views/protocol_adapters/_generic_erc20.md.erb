@@ -1,0 +1,48 @@
+<% data = adapter.panel_data %>
+<% if data[:error] %>
+## Token state
+
+_Could not read token state: <%= data[:error] %>_
+<% else %>
+## Token state (<%= adapter.protocol_name %>)
+
+- **Symbol:** <%= data[:symbol] %>
+<% if data[:name].present? && data[:name] != data[:symbol] %>
+- **Name:** <%= data[:name] %>
+<% end %>
+- **Decimals:** <%= data[:decimals] %>
+<% if data[:total_supply_formatted] %>
+- **Total supply:** <%= data[:total_supply_formatted] %> (raw: <%= number_with_delimiter(data[:total_supply_raw]) %>)
+<% end %>
+<% if data[:price_usd] %>
+- **Price:** $<%= number_with_delimiter(data[:price_usd].round(6)) %> (via DefiLlama)
+<% end %>
+<% if data[:market_cap_usd] %>
+- **Market cap:** $<%= number_with_delimiter(data[:market_cap_usd].round(0)) %>
+<% end %>
+<% if data[:issuer] %>
+- **Issuer:** <%= data[:issuer][:name] %><% if data[:issuer][:url] %> — <<%= data[:issuer][:url] %>><% end %>
+<% end %>
+<% if data[:admin_status].present? %>
+
+### Admin status
+<% data[:admin_status].each do |s| %>
+<% if s[:value] == true && s[:severity] == :critical %>
+- **<%= s[:label] %>:** true ⚠ CRITICAL
+<% elsif [ true, false ].include?(s[:value]) %>
+- **<%= s[:label] %>:** <%= s[:value] %>
+<% elsif s[:value].is_a?(String) %>
+- **<%= s[:label] %>:** `<%= s[:value] %>`<% if s[:value].downcase == ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS %> (none)<% end %>
+<% end %>
+<% end %>
+<% end %>
+<% if data[:admin_roles].present? %>
+
+### Admin roles
+<% data[:admin_roles].each do |r| %>
+<% addr = r[:value].to_s.downcase %>
+<% is_zero = (addr == ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS) %>
+- **<%= r[:label] %>:** `<%= addr %>`<% if is_zero %> (none)<% end %>
+<% end %>
+<% end %>
+<% end %>

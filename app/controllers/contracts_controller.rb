@@ -3,9 +3,11 @@ class ContractsController < ApplicationController
     chain_slug, address = resolve_chain_and_address
     @chain = Chain.find_by!(slug: chain_slug)
 
-    # Hex URL that has a slug → 301 to the canonical slug form.
+    # Hex URL that has a slug → 301 to the canonical slug form. Format is
+    # preserved so `/eth/0xa0b8….md` redirects to `/usdc-eth.md`, not the
+    # default HTML view.
     if params[:address].present? && (slug = ContractSlugs.for(chain_slug, address))
-      return redirect_to "/#{slug}", status: :moved_permanently
+      return redirect_to canonical_path(slug), status: :moved_permanently
     end
 
     @contract = Contract.find_by(chain: @chain, address: address)
@@ -25,10 +27,18 @@ class ContractsController < ApplicationController
   rescue EtherscanClient::NotVerifiedError
     @address = address
     @inspection = inspect_address(@chain, address)
-    render :not_verified, status: :not_found
+    respond_to do |format|
+      format.html { render :not_verified, status: :not_found }
+      format.md   { render plain: unverified_markdown(@chain, address, @inspection), status: :not_found, content_type: "text/markdown" }
+    end
   rescue EtherscanClient::Error => e
-    flash.now[:alert] = "Failed to fetch contract: #{e.message}"
-    render :error, status: :service_unavailable
+    respond_to do |format|
+      format.html do
+        flash.now[:alert] = "Failed to fetch contract: #{e.message}"
+        render :error, status: :service_unavailable
+      end
+      format.md { render plain: "# Error\n\nFailed to fetch contract at #{address} on #{@chain&.name || chain_slug}: #{e.message}\n", status: :service_unavailable, content_type: "text/markdown" }
+    end
   end
 
   private
@@ -82,5 +92,28 @@ class ContractsController < ApplicationController
     EnrichContractAiJob.perform_later(contract)
   rescue => e
     Rails.logger.warn("[ContractsController] AI enqueue failed: #{e.class}: #{e.message}")
+  end
+
+  def canonical_path(slug)
+    params[:format] == "md" ? "/#{slug}.md" : "/#{slug}"
+  end
+
+  def unverified_markdown(chain, address, inspection)
+    kind =
+      if inspection&.respond_to?(:eoa?) && inspection.eoa?
+        "externally owned account (EOA)"
+      elsif inspection&.is_contract
+        "unverified contract"
+      else
+        "unknown address"
+      end
+
+    <<~MD
+      # Unverified: #{address} on #{chain.name}
+
+      smarts.md only documents verified smart contracts. This address is an #{kind}.
+
+      View raw on-chain state: <https://smarts.md/#{chain.slug}/#{address}>
+    MD
   end
 end

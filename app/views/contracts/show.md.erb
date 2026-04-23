@@ -1,0 +1,42 @@
+<% canonical = @canonical_slug ? "https://smarts.md/#{@canonical_slug}" : "https://smarts.md/#{@chain.slug}/#{@contract.address}" %>
+<% reference = @canonical_slug || "#{@chain.slug}/#{@contract.address}" %>
+<% explorer = explorer_address_url(@chain, @contract.address) %>
+# <%= contract_display_name %> on <%= @chain.name %>
+
+- **Address:** `<%= @contract.address %>`
+- **Chain:** <%= @chain.name %>
+<% if @classification %>
+- **Classification:** <%= @classification.display_name %>
+<% end %>
+<% if @contract.compiler_version.present? %>
+- **Compiler:** Solidity <%= @contract.compiler_version %>
+<% end %>
+<% if @contract.license.present? %>
+- **License:** <%= @contract.license %>
+<% end %>
+<% if @contract.implementation_address.present? %>
+- **Proxy implementation:** `<%= @contract.implementation_address %>`
+<% end %>
+
+<% if @classification&.description.present? %>
+_<%= @classification.description %>_
+
+<% end %>
+## Query via AI agent
+
+- **MCP endpoint:** `https://smarts.md/mcp/sse`
+- **Reference:** `<%= reference %>`
+- **Sample prompt:** "Tell me the current state of <%= reference %>"
+
+Setup for Claude Code, Cursor, Windsurf, Cline: <https://mcp.smarts.md/>
+<% if @protocol_adapter %>
+
+<%= render @protocol_adapter.template_partial, adapter: @protocol_adapter %>
+<% end %>
+
+## Links
+
+- Docs: <<%= canonical %>>
+<% if explorer %>
+- <%= explorer_name(@chain) %>: <<%= explorer %>>
+<% end %>

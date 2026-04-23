@@ -34,6 +34,144 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  # ---------- markdown format (WebFetch-friendly distillation) ----------
+
+  test "slug page .md returns text/markdown with the core sections" do
+    contract = contracts(:uni_token)
+    # Fixture address 0x1111… isn't in the slug map, so hit it via hex.
+    get "/eth/#{contract.address}.md"
+
+    assert_response :success
+    assert_equal "text/markdown", response.media_type
+    assert_match %r{\A# .+ on Ethereum}, response.body
+    assert_match %r{^- \*\*Address:\*\* `0x}, response.body
+    assert_match %r{^- \*\*Chain:\*\* Ethereum}, response.body
+    assert_match "## Query via AI agent", response.body
+    assert_match "## Links", response.body
+    assert_match "mcp.smarts.md", response.body
+  end
+
+  test "slug URL .md resolves without redirect and uses the canonical slug in the reference line" do
+    uni_addr = "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984" # maps to uni-eth
+    Contract.find_or_create_by!(chain: chains(:ethereum), address: uni_addr) do |c|
+      c.name = "Uniswap"
+      c.abi = [ { "type" => "event", "name" => "Transfer", "inputs" => [] } ]
+    end
+
+    get "/uni-eth.md"
+    assert_response :success
+    assert_equal "text/markdown", response.media_type
+    assert_match "- **Reference:** `uni-eth`", response.body
+  end
+
+  test "hex URL .md 301s to canonical slug .md, preserving the format segment" do
+    # Slug-matching hex URL → 301 fires before any DB / Etherscan lookup,
+    # so we don't need to pre-create the Contract record for this test.
+    get "/eth/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984.md"
+    assert_redirected_to "/uni-eth.md"
+    assert_equal 301, response.status
+  end
+
+  # Formats other than html/md must NOT match the contract routes; otherwise
+  # we'd have to handle .json / .xml / whatever with templates we don't have.
+  test "unsupported formats fall through the route pattern and return 404" do
+    get "/uni-eth.json"
+    assert_response :not_found
+    get "/eth/0x1f9840a85d5af5bf1d1762f925bdaddc4201f984.xml"
+    assert_response :not_found
+  end
+
+  # Adapter-composed markdown panel must flow into the .md output the same
+  # way it does into the .html rendering. Stub adapter so this test doesn't
+  # rely on fixture ABIs matching GenericErc20Adapter's 6-selector check.
+  test "contract page .md includes the ERC-20 adapter's markdown partial when matched" do
+    contract = contracts(:uni_token)
+
+    fake_adapter = ProtocolAdapters::GenericErc20Adapter.allocate
+    fake_adapter.instance_variable_set(:@contract, contract)
+    fake_adapter.instance_variable_set(:@chain, contract.chain)
+    fake_adapter.define_singleton_method(:panel_data) do
+      { symbol: "UNI", name: "Uniswap", decimals: 18, total_supply_raw: nil,
+        total_supply_formatted: nil, price_usd: nil, market_cap_usd: nil,
+        issuer: nil, admin_status: [], admin_roles: [] }
+    end
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_) { fake_adapter }) do
+      get "/eth/#{contract.address}.md"
+    end
+
+    assert_response :success
+    assert_match %r{^## Token state}, response.body
+    assert_match "- **Symbol:** UNI", response.body
+  end
+
+  test "contract page .md includes the Uniswap V3 adapter's markdown partial when matched" do
+    contract = contracts(:uni_token)
+
+    fake_adapter = ProtocolAdapters::UniswapV3Adapter.allocate
+    fake_adapter.instance_variable_set(:@contract, contract)
+    fake_adapter.instance_variable_set(:@chain, contract.chain)
+    fake_adapter.define_singleton_method(:panel_data) do
+      {
+        token0: { symbol: "USDC", decimals: 6,  address: "0xa0b8" },
+        token1: { symbol: "WETH", decimals: 18, address: "0xc02a" },
+        fee_pct: "0.05%",
+        price_1_per_0: 0.000428,
+        price_0_per_1: 2334.30,
+        tick: 198_765,
+        liquidity: 123_456_789,
+        tvl_usd: 100_000_000
+      }
+    end
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_) { fake_adapter }) do
+      get "/eth/#{contract.address}.md"
+    end
+
+    assert_response :success
+    assert_match %r{^## Pool state}, response.body
+    assert_match "- **Pair:** USDC / WETH", response.body
+    assert_match "- **Fee tier:** 0.05%", response.body
+    assert_match "- **TVL:** $100,000,000 (via DefiLlama)", response.body
+  end
+
+  # Error-state rescue branches have their own markdown bodies. Without a
+  # respond_to here, a .md request on an unverified contract would try to
+  # render not_verified.html.erb, which 500s because the layout is HTML-only.
+  test "unverified contract .md returns markdown 404 with address and chain" do
+    stub_request(:get, /api\.etherscan\.io.*getsourcecode/).to_return(
+      status: 200,
+      body: { "status" => "1", "message" => "OK", "result" => [ { "ABI" => "Contract source code not verified" } ] }.to_json,
+      headers: { "Content-Type" => "application/json" }
+    )
+
+    stub_class_method(ChainReader::AddressInspector, :call,
+      ->(**_) { ChainReader::AddressInspector::Result.new(is_contract: true, balance_wei: 0, tx_count: 0, ens_name: nil) }) do
+      get "/eth/0x0000000000000000000000000000000000000001.md"
+    end
+
+    assert_response :not_found
+    assert_equal "text/markdown", response.media_type
+    assert_match %r{^# Unverified: 0x0000000000000000000000000000000000000001 on Ethereum}, response.body
+    assert_match "unverified contract", response.body
+  end
+
+  test "unverified EOA .md flags the address as an externally owned account" do
+    stub_request(:get, /api\.etherscan\.io.*getsourcecode/).to_return(
+      status: 200,
+      body: { "status" => "1", "message" => "OK", "result" => [ { "ABI" => "Contract source code not verified" } ] }.to_json,
+      headers: { "Content-Type" => "application/json" }
+    )
+
+    stub_class_method(ChainReader::AddressInspector, :call,
+      ->(**_) { ChainReader::AddressInspector::Result.new(is_contract: false, balance_wei: 0, tx_count: 0, ens_name: nil) }) do
+      get "/eth/0x0000000000000000000000000000000000000002.md"
+    end
+
+    assert_response :not_found
+    assert_match "externally owned account (EOA)", response.body
+  end
+
   # ---------- slug aliases (WMATIC → WPOL rebrand) ----------
 
   test "hex URL for an aliased contract 301s to the canonical (newest) slug, not the legacy alias" do

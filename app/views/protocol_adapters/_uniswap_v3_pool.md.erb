@@ -1,0 +1,25 @@
+<% data = adapter.panel_data %>
+<% if data[:error] %>
+## Pool state
+
+_Could not read pool state: <%= data[:error] %>_
+<% else %>
+## Pool state (<%= adapter.protocol_name %>)
+
+- **Pair:** <%= data[:token0][:symbol] %> / <%= data[:token1][:symbol] %>
+- **Fee tier:** <%= data[:fee_pct] %>
+<% if data[:price_0_per_1] %>
+- **Price:** 1 <%= data[:token1][:symbol] %> ≈ <%= number_with_delimiter(data[:price_0_per_1].round(6)) %> <%= data[:token0][:symbol] %>
+- **Inverse price:** 1 <%= data[:token0][:symbol] %> = <%= data[:price_1_per_0] %> <%= data[:token1][:symbol] %>
+<% end %>
+- **Current tick:** <%= number_with_delimiter(data[:tick]) %>
+- **Active liquidity:** <%= number_with_delimiter(data[:liquidity]) %>
+<% if data[:tvl_usd] %>
+- **TVL:** $<%= number_with_delimiter(data[:tvl_usd].round(0)) %> (via DefiLlama)
+<% end %>
+
+### Tokens
+
+- **token0** — <%= data[:token0][:symbol] %> (`<%= data[:token0][:address] %>`), <%= data[:token0][:decimals] %> decimals
+- **token1** — <%= data[:token1][:symbol] %> (`<%= data[:token1][:address] %>`), <%= data[:token1][:decimals] %> decimals
+<% end %>
