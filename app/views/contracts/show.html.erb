@@ -22,7 +22,9 @@
   ]) %>
 <% end %>
 
-<div class="max-w-5xl mx-auto py-8 px-4">
+<%# Inner px-0 — outer <main> in the layout already supplies horizontal
+    padding. Doubling was wasting ~72px of mobile width. %>
+<div class="max-w-5xl mx-auto py-4 sm:py-8">
   <div class="mb-8">
     <div class="flex items-center gap-3 mb-2 flex-wrap">
       <h1 class="text-3xl font-bold"><%= contract_name %></h1>
@@ -33,9 +35,9 @@
         </span>
       <% end %>
     </div>
-    <p class="font-mono text-sm opacity-70"><%= @contract.address %></p>
+    <p class="font-mono text-sm opacity-70 break-all"><%= @contract.address %></p>
     <% if @contract.implementation_address.present? %>
-      <p class="text-sm opacity-70 mt-1">
+      <p class="text-sm opacity-70 mt-1 break-all">
         <span class="badge badge-ghost badge-sm">Proxy</span>
         <span class="opacity-60">implementation:</span>
         <span class="font-mono"><%= @contract.implementation_address %></span>

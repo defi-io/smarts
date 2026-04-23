@@ -1,6 +1,9 @@
 <section class="mb-8">
   <h2 class="text-2xl font-semibold mb-4">Overview</h2>
-  <div class="stats shadow">
+  <%# Stack vertically on mobile (horizontal row overflowed the viewport on
+      narrow screens); switch to horizontal from md up where 3 tiles comfortably
+      fit side-by-side. %>
+  <div class="stats stats-vertical md:stats-horizontal shadow w-full md:w-auto">
     <div class="stat">
       <div class="stat-title">Read Functions</div>
       <div class="stat-value text-primary"><%= @contract.view_functions.size %></div>
