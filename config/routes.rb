@@ -25,4 +25,9 @@ Rails.application.routes.draw do
 
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check
+
+  # MCP discovery manifest (forward-looking, no formal spec yet). Served on
+  # both smarts.md and mcp.smarts.md so crawlers and future auto-discovery
+  # clients find it either way.
+  get "/.well-known/mcp.json", to: "marketing#well_known_mcp", defaults: { format: :json }
 end

@@ -180,4 +180,58 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
     assert_match(/jsonrpc/, response.body,
                  "fast-mcp middleware should respond with JSON-RPC, proving it's still in front of the route")
   end
+
+  # ---------- .well-known/mcp.json manifest ----------
+
+  test "well-known MCP manifest returns a JSON payload with top-level fields" do
+    get "/.well-known/mcp.json"
+
+    assert_response :success
+    assert_equal "application/json; charset=utf-8", response.media_type + "; charset=#{response.charset}"
+
+    body = JSON.parse(response.body)
+    assert_equal "smarts", body["name"]
+    assert body["version"].present?
+    assert body["description"].present?
+    assert_equal "https://smarts.md/", body["homepage_url"]
+    assert_equal "https://mcp.smarts.md/", body["documentation_url"]
+  end
+
+  test "well-known MCP manifest advertises the SSE transport with explicit endpoints" do
+    get "/.well-known/mcp.json"
+    body = JSON.parse(response.body)
+
+    sse = body["transports"].find { |t| t["type"] == "sse" }
+    assert sse, "expected a transport of type sse"
+    assert_equal "https://smarts.md/mcp/sse",      sse["endpoint"]
+    assert_equal "https://smarts.md/mcp/messages", sse["messages"]
+  end
+
+  test "well-known MCP manifest lists every MCP tool with its description" do
+    get "/.well-known/mcp.json"
+    body = JSON.parse(response.body)
+
+    listed_names = body["tools"].map { |t| t["name"] }
+    expected     = MarketingController::MCP_TOOLS.map { |t| t[:name] }
+    assert_equal expected.sort, listed_names.sort
+
+    body["tools"].each do |t|
+      assert t["description"].present?, "tool #{t['name']} should include a description"
+    end
+  end
+
+  test "well-known MCP manifest sends permissive CORS and short cache headers" do
+    get "/.well-known/mcp.json"
+
+    assert_equal "*", response.headers["Access-Control-Allow-Origin"]
+    assert_match(/public/, response.headers["Cache-Control"])
+    assert_match(/max-age=\d+/, response.headers["Cache-Control"])
+  end
+
+  test "well-known MCP manifest is served on the mcp.smarts.md host too" do
+    host! "mcp.smarts.md"
+    get "/.well-known/mcp.json"
+    assert_response :success
+    assert_equal "smarts", JSON.parse(response.body)["name"]
+  end
 end
