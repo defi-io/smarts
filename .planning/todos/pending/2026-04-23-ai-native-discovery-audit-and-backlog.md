@@ -22,41 +22,46 @@ Audited current state against "how would Claude find smarts" on 2026-04-23 with 
 
 "One MCP endpoint per contract" is a product narrative, not a discovery mechanism — clients will never auto-install per-contract endpoints.
 
-### Audit (2026-04-23)
+### Audit (2026-04-23 audit → 2026-04-23 end-of-day)
 
 | Item | Status |
 |---|---|
-| MCP server `/mcp/sse` | shipped |
-| `.well-known/mcp.json` manifest | shipped (`routes.rb:32`) |
-| Smithery directory | submitted |
-| Per-contract MCP reference card | shipped (`_mcp_info.html.erb`) |
-| `llms.txt` | MISSING |
-| OpenGraph / JSON-LD / Twitter meta | MISSING |
-| `sitemap.xml` | MISSING |
-| `robots.txt` | default-only; AI crawlers not explicitly allowed |
-| Glama listing | not submitted |
-| Official MCP Registry | not submitted |
-| Markdown variant of contract pages (`/eth/0x....md`) | MISSING |
+| MCP server `/mcp/sse` | shipped (pre-audit) |
+| `.well-known/mcp.json` manifest | shipped (pre-audit) |
+| Smithery directory | metadata.yaml fixed PR #22; **external deploy BLOCKED** — see sibling todo `smithery-external-deploy-blocked-by-namespace-rule` |
+| Per-contract MCP reference card | shipped (pre-audit) |
+| `llms.txt` | ✅ done (PR #22) |
+| OpenGraph / JSON-LD / Twitter meta | ✅ done (PRs #23, #24, #25) |
+| BreadcrumbList + WebSite SearchAction JSON-LD | ✅ done (PR #24) |
+| 1200×630 OG card PNG | ✅ done (PR #25) |
+| Brand-first display name (on-chain name(), adapter display_name) | ✅ done (PRs #26, #29) |
+| WMATIC → WPOL rebrand cleanup + slug alias | ✅ done (PRs #27, #28) |
+| Markdown variant of contract pages (`/eth/0x....md`) | ✅ done (PR #30) |
+| Mobile layout fixes (overflow, padding, wordmark) | ✅ done (PR #31) |
+| `robots.txt` AI crawler allowlist | ✅ done (PR #22) + Cloudflare managed robots.txt disabled |
+| `sitemap.xml` | ⏳ NOT STARTED |
+| Glama listing | ⏳ NOT STARTED (manual submission by Bob) |
+| Official MCP Registry | ⏳ NOT STARTED (PR to `modelcontextprotocol/servers` by Bob) |
 
 ## Solution
 
-Prioritized backlog (P1 is starting now in a separate session; this todo tracks the remaining P2/P3 plus the "done" record).
+Prioritized backlog — P1/P2/P4-P6 done today across 10 PRs. Remaining open work:
 
-### P1 — in progress (do first, ≤1h each)
+### P1 — done
 
-1. `public/llms.txt` — AI crawler site map; list purpose, URL patterns, MCP endpoint, tools.
-2. Submit to Glama (`glama.ai/mcp/servers`) — GitHub repo URL, auto-indexed; also bridges into official MCP Registry's superset. **Manual action by Bob.**
-3. `robots.txt` — explicit allow for GPTBot / ClaudeBot / PerplexityBot / Google-Extended; link sitemap.
+1. ✅ `public/llms.txt` (PR #22)
+2. ⏳ Submit to Glama (`glama.ai/mcp/servers`) — **manual, still pending**
+3. ✅ `robots.txt` AI crawler allowlist (PR #22)
 
-### P2 — next week (1–3h each)
+### P2 — partially done
 
-4. OpenGraph + JSON-LD on contract pages (contract name, protocol, TVL, address). Check `application.html.erb` / `show.html.erb` — currently no meta tags beyond title.
-5. Dynamic sitemap — either add `sitemap_generator` gem (needs approval per CLAUDE.md "no new gems without confirmation") or hand-roll a `GET /sitemap.xml` controller. List all known Contracts, updated daily.
-6. `.md` variant of contract pages (`smarts.md/eth/0x....md`) — branch in `ContractsController#show` on `format`, return markdown. Claude WebFetch parses markdown far better than HTML.
+4. ✅ OpenGraph + JSON-LD on contract pages (PRs #23/#24/#25/#26/#29)
+5. ⏳ Dynamic sitemap — **still pending**. Options: `sitemap_generator` gem (needs approval per CLAUDE.md) or hand-roll a `GET /sitemap.xml` controller. List all known Contracts updated daily.
+6. ✅ `.md` variant of contract pages (PR #30)
 
-### P3 — when convenient
+### P3 — still pending
 
-7. Submit to official MCP Registry (`github.com/modelcontextprotocol/servers` PR).
+7. ⏳ Submit to official MCP Registry (PR to `github.com/modelcontextprotocol/servers`) — **manual by Bob**.
 
 ### Explicitly not doing
 
