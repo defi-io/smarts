@@ -8,6 +8,17 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
     assert_match "Live docs for every smart contract.", response.body
   end
 
+  # Prevents the mobile-overflow regression fixed in fix/mobile-layout: flex
+  # items with unbreakable descendants (long hex addresses, <pre> source
+  # blocks) can expand past the viewport on narrow screens. overflow-x-hidden
+  # on <body> is the safety net. Applies to the shared layout so every page
+  # inherits the same protection.
+  test "body carries overflow-x-hidden so mobile never horizontal-scrolls the page" do
+    get root_path
+    assert_response :success
+    assert_match %r{<body[^>]*class="[^"]*overflow-x-hidden}, response.body
+  end
+
   test "home surfaces MCP entry link to mcp.smarts.md" do
     get root_path
     assert_response :success

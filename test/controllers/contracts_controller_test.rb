@@ -215,6 +215,17 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     refute_match %r{rel="canonical"}, response.body
   end
 
+  # Prevents the Overview-stats-overflow regression fixed in fix/mobile-layout.
+  # DaisyUI's `stats` component defaults to horizontal, which overflows on
+  # <768px viewports. We explicitly stack vertically and switch to horizontal
+  # at md+. Losing either class silently reintroduces the overflow on mobile.
+  test "Overview stats container stacks vertically on mobile and goes horizontal at md+" do
+    contract = contracts(:uni_token)
+    get contract_path(chain: "eth", address: contract.address)
+    assert_response :success
+    assert_match %r{class="[^"]*stats stats-vertical md:stats-horizontal}, response.body
+  end
+
   # ---------- SEO meta tags + JSON-LD ----------
 
   test "contract page sets OG title with chain and contract name" do
