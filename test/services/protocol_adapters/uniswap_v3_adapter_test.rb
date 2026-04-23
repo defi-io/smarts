@@ -189,4 +189,39 @@ class ProtocolAdapters::UniswapV3AdapterTest < ActiveSupport::TestCase
       end
     end
   end
+
+  # ---------- display_name ----------
+
+  test "display_name composes pair and fee from panel_data" do
+    adapter = ProtocolAdapters::UniswapV3Adapter.new(@contract)
+    adapter.define_singleton_method(:panel_data) do
+      { token0: { symbol: "USDC" }, token1: { symbol: "WETH" }, fee_pct: "0.05%" }
+    end
+    assert_equal "USDC/WETH 0.05%", adapter.display_name
+  end
+
+  test "display_name returns nil when panel_data is an error result" do
+    adapter = ProtocolAdapters::UniswapV3Adapter.new(@contract)
+    adapter.define_singleton_method(:panel_data) do
+      { error: "pool state unreadable" }
+    end
+    assert_nil adapter.display_name
+  end
+
+  test "display_name returns nil when either token symbol is missing / unknown" do
+    adapter = ProtocolAdapters::UniswapV3Adapter.new(@contract)
+
+    # The adapter's token-read code returns "?" as a sentinel when a symbol
+    # call reverts. display_name must treat it as a data gap, not render
+    # "?/WETH 0.05%".
+    [
+      { token0: { symbol: "?"    }, token1: { symbol: "WETH" }, fee_pct: "0.05%" },
+      { token0: { symbol: "USDC" }, token1: { symbol: "?"    }, fee_pct: "0.05%" },
+      { token0: { symbol: nil    }, token1: { symbol: "WETH" }, fee_pct: "0.05%" },
+      { token0: { symbol: "USDC" }, token1: { symbol: "WETH" }, fee_pct: nil    }
+    ].each_with_index do |stub, i|
+      adapter.define_singleton_method(:panel_data) { stub }
+      assert_nil adapter.display_name, "case #{i}: expected nil for #{stub.inspect}"
+    end
+  end
 end

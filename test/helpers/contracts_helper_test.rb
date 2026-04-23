@@ -317,6 +317,33 @@ class ContractsHelperTest < ActionView::TestCase
     assert_equal "FiatTokenV2_2", contract_display_name
   end
 
+  test "contract_display_name prefers @protocol_adapter.display_name over on-chain name()" do
+    @contract = OpenStruct.new(name: "UniswapV3Pool")
+    @live_values = {
+      "name()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ "Accidental Name" ])
+    }
+    @protocol_adapter = OpenStruct.new(display_name: "USDC/WETH 0.05%")
+    assert_equal "USDC/WETH 0.05%", contract_display_name
+  end
+
+  test "contract_display_name falls through when @protocol_adapter.display_name is nil" do
+    @contract = OpenStruct.new(name: "FiatTokenV2_2")
+    @live_values = {
+      "name()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ])
+    }
+    @protocol_adapter = OpenStruct.new(display_name: nil)
+    assert_equal "USD Coin", contract_display_name
+  end
+
+  test "contract_display_name falls through when @protocol_adapter is nil" do
+    @contract = OpenStruct.new(name: "FiatTokenV2_2")
+    @live_values = {
+      "name()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ])
+    }
+    @protocol_adapter = nil
+    assert_equal "USD Coin", contract_display_name
+  end
+
   # ---------- explorer_address_url / explorer_name / truncate_address ----------
 
   test "explorer_address_url maps supported chain slugs to their block explorer" do

@@ -94,16 +94,20 @@ module ContractsHelper
 
   # Brand-first display name with fallback chain.
   #
-  # Etherscan returns the Solidity class name (e.g. "FiatTokenV2_2") for many
-  # proxy-deployed tokens. That's what we store on `contract.name`. But the
-  # on-chain ERC-20 `name()` function returns the actual brand ("USD Coin"),
-  # which is what users — and SEO / breadcrumbs — should see.
+  # Etherscan returns the Solidity class name (e.g. "FiatTokenV2_2",
+  # "UniswapV3Pool") for many contracts. That's on `contract.name`, but it's
+  # rarely what users want to see. We check, in order:
   #
-  # Reads from `@live_values` which the controller populates via
-  # ChainReader::ViewCaller. For non-ERC-20 contracts `name()` / `symbol()`
-  # won't be in the ABI, so we fall through to the Solidity class name.
+  #   1. Protocol adapter's `display_name` — for non-ERC-20 shapes where the
+  #      on-chain name()/symbol() don't exist or aren't descriptive. Example:
+  #      UniswapV3Adapter composes "USDC/WETH 0.05%" from token0/token1/fee.
+  #   2. On-chain `name()` — ERC-20 brand name ("USD Coin").
+  #   3. On-chain `symbol()` — ticker fallback ("USDC").
+  #   4. `contract.name` — whatever Etherscan handed us.
+  #   5. "Unknown Contract" — final safety net.
   def contract_display_name
-    live_value("name()").to_s.presence ||
+    @protocol_adapter&.display_name.to_s.presence ||
+      live_value("name()").to_s.presence ||
       live_value("symbol()").to_s.presence ||
       @contract&.name.presence ||
       "Unknown Contract"

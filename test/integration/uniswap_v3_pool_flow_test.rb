@@ -46,6 +46,14 @@ class UniswapV3PoolFlowTest < ActionDispatch::IntegrationTest
     assert_match "WETH · 18 decimals", response.body
     assert_match "198,819", response.body                 # current tick
     assert_match "via DefiLlama prices", response.body
+
+    # Adapter-provided display name flows all the way up to page-level
+    # identity — H1, <title>, OG title, breadcrumb. Locks the fix for the
+    # "H1 says UniswapV3Pool instead of USDC/WETH 0.05%" bug.
+    assert_select "h1", "USDC/WETH 0.05%"
+    assert_match %r{<title>USDC/WETH 0\.05% on Ethereum — live on-chain contract docs \| smarts.md</title>}, response.body
+    assert_match %r{<meta property="og:title" content="USDC/WETH 0\.05% on Ethereum — live on-chain contract docs \| smarts.md">}, response.body
+    refute_match "UniswapV3Pool on Ethereum", response.body, "Solidity class name must not leak into the page title/breadcrumb"
   end
 
   test "renders pool panel gracefully when DefiLlama is down (no TVL, but price/fee/tokens shown)" do

@@ -66,6 +66,22 @@ module ProtocolAdapters
       "Uniswap V3"
     end
 
+    # "USDC/WETH 0.05%" — composed from token0/token1/fee already loaded into
+    # panel_data (cached 60s, so calling from the view helper doesn't add RPC).
+    # Returns nil on any data gap so contract_display_name falls back through
+    # the rest of its chain (on-chain name → symbol → contract.name).
+    def display_name
+      data = panel_data
+      return nil if data[:error]
+
+      t0 = data.dig(:token0, :symbol)
+      t1 = data.dig(:token1, :symbol)
+      fee = data[:fee_pct]
+      return nil if t0.blank? || t1.blank? || fee.blank? || t0 == "?" || t1 == "?"
+
+      "#{t0}/#{t1} #{fee}"
+    end
+
     def panel_data
       Rails.cache.fetch(cache_key, expires_in: 60.seconds) { read_panel_data }
     end

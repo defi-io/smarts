@@ -14,8 +14,11 @@ class MarketingController < ApplicationController
       symbol: "DAI",  name: "Dai",        blurb: "MakerDAO's decentralized, crypto-backed stablecoin." },
 
     # DEX & Wrapped
+    # Symbol holds the pair (the distinguishing identifier across many pools);
+    # name carries the protocol + fee context. Matches the contract page H1
+    # "USDC/WETH 0.05%" so cards and detail pages read the same.
     { category: "DEX & Wrapped", chain: "eth", address: "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
-      symbol: "V3 Pool", name: "Uniswap V3 USDC/WETH 0.05%", blurb: "Ethereum's deepest Uniswap V3 pool." },
+      symbol: "USDC/WETH", name: "Uniswap V3 · 0.05% fee", blurb: "Ethereum's deepest Uniswap V3 pool." },
     { category: "DEX & Wrapped", chain: "eth", address: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
       symbol: "WETH", name: "Wrapped Ether", blurb: "The ERC-20 form of ETH — plumbing for every DEX." },
     { category: "DEX & Wrapped", chain: "eth", address: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",

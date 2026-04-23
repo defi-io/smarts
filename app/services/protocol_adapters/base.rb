@@ -42,6 +42,16 @@ module ProtocolAdapters
       raise NotImplementedError
     end
 
+    # Optional: adapter-specific human-friendly display name for the contract,
+    # used as the page H1 / title / breadcrumb / JSON-LD `about.name`.
+    # Default nil means "let contract_display_name fall through to on-chain
+    # name()/symbol()", which is the right answer for plain ERC-20s. Override
+    # in adapters where on-chain name() doesn't exist or isn't descriptive
+    # (e.g. Uniswap V3 pools: compose "USDC/WETH 0.05%" from token0/token1/fee).
+    def display_name
+      nil
+    end
+
     def template_partial
       # Default: protocol_adapters/<type_tag>
       "protocol_adapters/#{self.class.type_tag}"

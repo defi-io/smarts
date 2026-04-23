@@ -61,6 +61,15 @@ class ProtocolAdapters::BaseTest < ActiveSupport::TestCase
     end
   end
 
+  # Default display_name is nil so ERC-20-ish adapters that don't override
+  # it fall through to the on-chain name()/symbol() branch of
+  # contract_display_name. Overriding is opt-in per adapter.
+  test "display_name defaults to nil" do
+    adapter_class = make_fake_adapter(tag: "no_display_override", matches: true)
+    adapter = adapter_class.new(@contract)
+    assert_nil adapter.display_name
+  end
+
   private
 
   def make_fake_adapter(tag:, matches:)
