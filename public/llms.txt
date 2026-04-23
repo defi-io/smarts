@@ -1,0 +1,63 @@
+# smarts.md
+
+> Live docs for every verified smart contract. Point your AI agent at one URL and ask about any contract on Ethereum, Base, Arbitrum, Optimism, or Polygon. Each page pulls metadata from Etherscan, reads live state via Multicall3, and enriches with an AI-generated explanation.
+
+Smarts is an AI-native documentation platform for smart contracts. Unlike static docs, every page is regenerated from on-chain state, so balances, prices, TVL, pause flags, and admin roles are always current.
+
+## How to use from an AI agent
+
+The fastest path: connect our MCP server once, then query any contract by chain+address or by a curated slug.
+
+- [MCP endpoint](https://smarts.md/mcp/sse): SSE transport, 5 tools, no auth
+- [MCP setup docs](https://mcp.smarts.md/): per-client config for Claude Code, Claude Desktop, Cursor, Windsurf, Cline
+- [Discovery manifest](https://smarts.md/.well-known/mcp.json): forward-looking JSON describing endpoint, transport, and tools
+
+One-line Claude Code setup:
+
+```
+claude mcp add --transport sse smarts https://smarts.md/mcp/sse
+```
+
+## URL patterns
+
+- `https://smarts.md/{chain}/{address}` — canonical, e.g. `/eth/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48`
+- `https://smarts.md/{slug}` — friendly form for curated contracts, e.g. `/usdc-eth`, `/usdc-base`, `/univ3-usdc-weth-eth`
+
+Supported chains (slug suffix in parentheses): Ethereum (`-eth`), Base (`-base`), Arbitrum (`-arbitrum`), Optimism (`-optimism`), Polygon (`-polygon`).
+
+## MCP tools
+
+- `get_contract_info` — verified metadata, protocol classification, adapter tag, function counts
+- `get_erc20_info` — live supply, price, market cap, issuer, admin controls (paused, owner, minter, blacklist)
+- `get_uniswap_v3_pool` — token pair, fee tier, both-direction price, liquidity, tick, TVL
+- `inspect_address` — classify EOA vs contract vs EIP-7702 wallet, plus balance, nonce, reverse ENS
+- `read_contract_state` — call any view/pure function by name with positional args; returns decoded output
+
+## Featured contracts (stable references)
+
+- [USDC on Ethereum](https://smarts.md/usdc-eth)
+- [USDT on Ethereum](https://smarts.md/usdt-eth)
+- [DAI on Ethereum](https://smarts.md/dai-eth)
+- [WETH](https://smarts.md/weth-eth)
+- [WBTC](https://smarts.md/wbtc-eth)
+- [UNI governance token](https://smarts.md/uni-eth)
+- [LINK](https://smarts.md/link-eth)
+- [AAVE](https://smarts.md/aave-eth)
+- [Uniswap V3 USDC/WETH 0.05% pool](https://smarts.md/univ3-usdc-weth-eth)
+- [USDC on Base](https://smarts.md/usdc-base)
+- [USDC on Arbitrum](https://smarts.md/usdc-arbitrum)
+- [Wrapped MATIC on Polygon](https://smarts.md/wmatic-polygon)
+
+## Scope and limits
+
+- Only verified contracts (sourced from Etherscan V2); unverified bytecode is not supported.
+- Only EVM chains listed above. No Solana, Bitcoin, or Move.
+- Proxy contracts (EIP-1967, transparent, UUPS) are resolved to their implementation.
+- Live on-chain reads are cached for 60 seconds. ABI and source code are cached for 30 days.
+
+## Project
+
+- [Homepage](https://smarts.md/)
+- [Source on GitHub](https://github.com/defifund/smarts)
+- [README](https://github.com/defifund/smarts#readme)
+- License: MIT

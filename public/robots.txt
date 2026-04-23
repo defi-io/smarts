@@ -1,1 +1,63 @@
-# See https://www.robotstxt.org/robotstxt.html for documentation on how to use the robots.txt file
+# See https://www.robotstxt.org/robotstxt.html for documentation.
+#
+# Policy: smarts.md is public, AI-native documentation. We explicitly welcome
+# AI crawlers and user-agent fetchers — the whole point of the site is to be
+# read and used by AI agents. If a crawler is missing here and you run one,
+# open an issue at https://github.com/defifund/smarts.
+
+# --- AI crawlers (explicit allow) ---
+
+# OpenAI — training crawler, ChatGPT user fetches, and SearchGPT index.
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# Anthropic — Claude's web fetcher and crawler.
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Perplexity — crawler and user-initiated fetches.
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+# Google Gemini / Vertex AI training (separate from Googlebot search).
+User-agent: Google-Extended
+Allow: /
+
+# Apple Intelligence training.
+User-agent: Applebot-Extended
+Allow: /
+
+# Common Crawl — feeds many open LLM training sets.
+User-agent: CCBot
+Allow: /
+
+# Meta AI.
+User-agent: meta-externalagent
+Allow: /
+
+# Cohere.
+User-agent: cohere-ai
+Allow: /
+
+# --- Default (traditional search engines and everything else) ---
+
+User-agent: *
+Allow: /
+
+# AI-native site map for LLM ingestion (llmstxt.org convention).
+# Sitemap: https://smarts.md/sitemap.xml  # planned — not yet published
