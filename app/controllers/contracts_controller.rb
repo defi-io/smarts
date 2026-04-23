@@ -1,7 +1,12 @@
 class ContractsController < ApplicationController
   def show
-    @chain = Chain.find_by!(slug: params[:chain])
-    address = params[:address].downcase
+    chain_slug, address = resolve_chain_and_address
+    @chain = Chain.find_by!(slug: chain_slug)
+
+    # Hex URL that has a slug → 301 to the canonical slug form.
+    if params[:address].present? && (slug = ContractSlugs.for(chain_slug, address))
+      return redirect_to "/#{slug}", status: :moved_permanently
+    end
 
     @contract = Contract.find_by(chain: @chain, address: address)
 
@@ -11,6 +16,7 @@ class ContractsController < ApplicationController
       @contract.update!(info)
     end
 
+    @canonical_slug = ContractSlugs.for(chain_slug, address)
     @live_values = load_live_values(@contract)
     @protocol_adapter = resolve_protocol_adapter(@contract)
     @classification = classify(@contract)
@@ -26,6 +32,20 @@ class ContractsController < ApplicationController
   end
 
   private
+
+  # Returns [chain_slug, address] from either slug or chain/address params.
+  # Raises ActionController::RoutingError for an unknown slug so the route
+  # surfaces a clean 404 instead of NoMethodError down the line.
+  def resolve_chain_and_address
+    if params[:slug].present?
+      lookup = ContractSlugs.resolve(params[:slug])
+      raise ActionController::RoutingError, "unknown slug: #{params[:slug]}" unless lookup
+
+      [ lookup[0], lookup[1].downcase ]
+    else
+      [ params[:chain], params[:address].to_s.downcase ]
+    end
+  end
 
   def load_live_values(contract)
     ChainReader::ViewCaller.call(contract)

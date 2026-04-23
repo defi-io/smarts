@@ -11,6 +11,10 @@
     <meta name="turbo-refresh-method" content="morph">
     <meta name="turbo-refresh-scroll" content="preserve">
 
+    <% if @canonical_slug %>
+      <link rel="canonical" href="<%= request.protocol %><%= request.host_with_port %>/<%= @canonical_slug %>">
+    <% end %>
+
     <%= yield :head %>
 
     <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>

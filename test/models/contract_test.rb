@@ -27,7 +27,7 @@ class ContractTest < ActiveSupport::TestCase
 
   test "display_address truncates" do
     contract = contracts(:uni_token)
-    assert_equal "0x1f98...f984", contract.display_address
+    assert_equal "0x1111...1111", contract.display_address
   end
 
   test "view_functions returns only view/pure functions" do

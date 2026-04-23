@@ -28,7 +28,9 @@ class UniswapV3PoolFlowTest < ActionDispatch::IntegrationTest
       stub_class_method(ChainReader::Multicall3Client, :call, method(:fake_multicall)) do
         stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
           stub_class_method(DefiLlamaClient, :fetch_prices, ->(**_) { canned_prices }) do
+            # POOL_ADDRESS has a slug (univ3-usdc-weth-eth), so hex URL 301s
             get contract_path(chain: "eth", address: POOL_ADDRESS)
+            follow_redirect! if response.status == 301
           end
         end
       end
@@ -55,7 +57,9 @@ class UniswapV3PoolFlowTest < ActionDispatch::IntegrationTest
       stub_class_method(ChainReader::Multicall3Client, :call, method(:fake_multicall)) do
         stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
           stub_class_method(DefiLlamaClient, :fetch_prices, defillama_down) do
+            # POOL_ADDRESS has a slug (univ3-usdc-weth-eth), so hex URL 301s
             get contract_path(chain: "eth", address: POOL_ADDRESS)
+            follow_redirect! if response.status == 301
           end
         end
       end

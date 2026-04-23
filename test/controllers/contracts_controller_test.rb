@@ -9,14 +9,55 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", "Uni"
   end
 
+  test "show via friendly slug resolves to the contract" do
+    contract = contracts(:uni_token)
+    contract.update!(address: "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984") # real UNI, which maps to uni-eth
+    get "/uni-eth"
+    assert_response :success
+    assert_select "h1", "Uni"
+  end
+
+  test "show via hex URL 301s to slug when one exists" do
+    uni_addr = "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984"
+    Contract.find_or_create_by!(chain: chains(:ethereum), address: uni_addr) do |c|
+      c.name = "Uniswap"
+      c.abi = []
+    end
+
+    get contract_path(chain: "eth", address: uni_addr)
+    assert_redirected_to "/uni-eth"
+    assert_equal 301, response.status
+  end
+
+  test "unknown slug with chain suffix returns 404" do
+    get "/nonexistent-eth"
+    assert_response :not_found
+  end
+
+  test "slug-eligible page emits canonical link tag" do
+    contract = contracts(:uni_token)
+    contract.update!(address: "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984")
+    get "/uni-eth"
+    assert_response :success
+    assert_match %r{<link rel="canonical" href=".*/uni-eth">}, response.body
+  end
+
+  test "non-slug contract page does NOT emit canonical link tag" do
+    contract = contracts(:uni_token)
+    # fixture address (0x1111...) is not in the slug map
+    get contract_path(chain: "eth", address: contract.address)
+    assert_response :success
+    refute_match %r{rel="canonical"}, response.body
+  end
+
   test "show fetches from etherscan when contract not in db" do
     stub_etherscan_full
 
-    get contract_path(chain: "eth", address: "0xdac17f958d2ee523a2206206994597c13d831ec7")
+    get contract_path(chain: "eth", address: "0x2222222222222222222222222222222222222222")
 
     assert_response :success
     assert_select "h1", "TetherToken"
-    assert Contract.exists?(address: "0xdac17f958d2ee523a2206206994597c13d831ec7")
+    assert Contract.exists?(address: "0x2222222222222222222222222222222222222222")
   end
 
   test "show extracts and persists NatSpec end-to-end on first fetch" do
@@ -28,10 +69,10 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     SOL
 
     stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
-      get contract_path(chain: "eth", address: "0xdac17f958d2ee523a2206206994597c13d831ec7")
+      get contract_path(chain: "eth", address: "0x2222222222222222222222222222222222222222")
     end
 
-    persisted = Contract.find_by!(address: "0xdac17f958d2ee523a2206206994597c13d831ec7")
+    persisted = Contract.find_by!(address: "0x2222222222222222222222222222222222222222")
     assert_equal "Total supply of USDT.", persisted.natspec.dig("functions", "totalSupply", "notice")
     assert_match "Total supply of USDT.", response.body
   end
@@ -209,7 +250,7 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
 
     stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
       assert_no_enqueued_jobs(only: EnrichContractAiJob) do
-        get contract_path(chain: "eth", address: "0xdac17f958d2ee523a2206206994597c13d831ec7")
+        get contract_path(chain: "eth", address: "0x2222222222222222222222222222222222222222")
       end
     end
   end
