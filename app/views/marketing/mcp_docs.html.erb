@@ -1,0 +1,130 @@
+<% content_for :title, "Connect your AI · smarts.md" %>
+
+<div class="flex flex-col items-center w-full min-h-screen bg-gray-950 text-gray-100 fixed inset-0 z-50 overflow-auto">
+  <%# ---------- Hero ---------- %>
+  <div class="w-full max-w-4xl px-6 pt-20 pb-10 text-center">
+    <p class="text-xs uppercase tracking-widest text-blue-400 mb-4">Model Context Protocol</p>
+    <h1 class="text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-5">
+      Point your AI at smarts.md
+    </h1>
+    <p class="text-lg md:text-xl text-gray-300 mb-10 max-w-2xl mx-auto">
+      One endpoint. Every verified smart contract. Live on-chain data your agent can query —
+      no API keys, no scraping.
+    </p>
+
+    <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-5 inline-flex items-center gap-4 font-mono text-sm md:text-base">
+      <span class="text-gray-500">→</span>
+      <code class="text-white break-all"><%= @endpoint_url %></code>
+      <button
+        type="button"
+        data-controller="copy"
+        data-copy-text-value="<%= @endpoint_url %>"
+        data-action="click->copy#write"
+        class="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+        title="Copy endpoint URL"
+      >Copy</button>
+    </div>
+  </div>
+
+  <%# ---------- Install ---------- %>
+  <section class="w-full max-w-5xl px-6 pb-14">
+    <h2 class="text-xs uppercase tracking-wider text-gray-400 mb-4 font-semibold">Quick install</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <%# Claude Code %>
+      <div class="p-5 bg-gray-900/60 border border-gray-800 rounded-xl">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-lg font-bold text-white">Claude Code</span>
+          <span class="text-xs text-gray-500">CLI</span>
+        </div>
+        <p class="text-xs text-gray-400 mb-2">One command:</p>
+        <pre class="bg-gray-950 border border-gray-800 rounded-md px-3 py-2 text-xs overflow-x-auto"><code class="text-gray-200">claude mcp add --transport sse smarts <%= @endpoint_url %></code></pre>
+      </div>
+
+      <%# Cursor %>
+      <div class="p-5 bg-gray-900/60 border border-gray-800 rounded-xl">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-lg font-bold text-white">Cursor</span>
+          <span class="text-xs text-gray-500">~/.cursor/mcp.json</span>
+        </div>
+        <pre class="bg-gray-950 border border-gray-800 rounded-md px-3 py-2 text-xs overflow-x-auto"><code class="text-gray-200">{
+  "mcpServers": {
+    "smarts": {
+      "url": "<%= @endpoint_url %>"
+    }
+  }
+}</code></pre>
+      </div>
+
+      <%# Claude Desktop %>
+      <div class="p-5 bg-gray-900/60 border border-gray-800 rounded-xl">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-lg font-bold text-white">Claude Desktop</span>
+          <span class="text-xs text-gray-500">claude_desktop_config.json</span>
+        </div>
+        <pre class="bg-gray-950 border border-gray-800 rounded-md px-3 py-2 text-xs overflow-x-auto"><code class="text-gray-200">{
+  "mcpServers": {
+    "smarts": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "<%= @endpoint_url %>"]
+    }
+  }
+}</code></pre>
+        <p class="text-xs text-gray-500 mt-2">Uses <code class="text-gray-400">mcp-remote</code> to bridge SSE → stdio.</p>
+      </div>
+
+      <%# Windsurf / Cline / others %>
+      <div class="p-5 bg-gray-900/60 border border-gray-800 rounded-xl">
+        <div class="flex items-center gap-2 mb-3">
+          <span class="text-lg font-bold text-white">Windsurf · Cline · others</span>
+        </div>
+        <p class="text-xs text-gray-400 mb-2">Point the client at:</p>
+        <pre class="bg-gray-950 border border-gray-800 rounded-md px-3 py-2 text-xs overflow-x-auto"><code class="text-gray-200"><%= @endpoint_url %></code></pre>
+        <p class="text-xs text-gray-500 mt-2">Check the client's MCP docs for exact config syntax — the URL is what matters.</p>
+      </div>
+    </div>
+
+    <p class="text-xs text-gray-500 mt-4">
+      ChatGPT doesn't yet speak MCP natively. We'll ship a Custom GPT bridge once OpenAI's support stabilizes.
+    </p>
+  </section>
+
+  <%# ---------- Example queries ---------- %>
+  <section class="w-full max-w-5xl px-6 pb-14">
+    <h2 class="text-xs uppercase tracking-wider text-gray-400 mb-4 font-semibold">Ask your AI</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <% @example_queries.each do |ex| %>
+        <div class="p-4 bg-gray-900/60 border border-gray-800 rounded-xl">
+          <p class="text-sm text-gray-200 italic leading-snug mb-2">“<%= ex[:q] %>”</p>
+          <p class="text-xs text-gray-500 font-mono">→ <%= ex[:tool] %></p>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <%# ---------- Tool list ---------- %>
+  <section class="w-full max-w-5xl px-6 pb-14">
+    <h2 class="text-xs uppercase tracking-wider text-gray-400 mb-4 font-semibold">Tools</h2>
+
+    <div class="divide-y divide-gray-800 border border-gray-800 rounded-xl overflow-hidden">
+      <% @tools.each do |tool| %>
+        <div class="p-4 bg-gray-900/40">
+          <code class="text-white font-mono text-sm"><%= tool[:name] %></code>
+          <p class="text-sm text-gray-400 mt-1 leading-snug"><%= tool[:blurb] %></p>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <%# ---------- Footer ---------- %>
+  <footer class="w-full max-w-5xl px-6 pb-8 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-500">
+    <div>
+      <a href="https://smarts.md/" class="text-gray-400 hover:text-white underline">smarts.md</a>
+      · Built on the <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener" class="hover:text-white underline">MCP spec</a>
+    </div>
+    <div>
+      Built by <a href="https://chain.dev" class="text-gray-400 hover:text-white underline">chain.dev</a>
+    </div>
+  </footer>
+</div>

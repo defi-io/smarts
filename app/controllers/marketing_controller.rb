@@ -42,11 +42,37 @@ class MarketingController < ApplicationController
     "eth" => "Ethereum", "base" => "Base", "arbitrum" => "Arbitrum", "optimism" => "Optimism", "polygon" => "Polygon"
   }.freeze
 
+  MCP_ENDPOINT_URL = "https://smarts.md/mcp/sse".freeze
+
+  # Tools exposed over MCP. Kept in sync with app/tools/*.
+  MCP_TOOLS = [
+    { name: "get_contract_info",    blurb: "Metadata about a verified contract: name, classification, adapter, function counts." },
+    { name: "get_erc20_info",       blurb: "Live token state: formatted supply, price, market cap, issuer, admin controls (paused/owner/minter/…)." },
+    { name: "get_uniswap_v3_pool",  blurb: "Live pool state: token pair, fee, both-direction price, liquidity, tick, TVL." },
+    { name: "inspect_address",      blurb: "Classifies any address as EOA / contract / EIP-7702 wallet, plus balance, nonce, and reverse ENS." },
+    { name: "read_contract_state",  blurb: "Read any view/pure function by name, with positional args. Returns decoded output." }
+  ].freeze
+
+  MCP_EXAMPLE_QUERIES = [
+    { q: "Is USDC paused right now?",                           tool: "get_erc20_info" },
+    { q: "What's the TVL of the Uniswap V3 USDC/WETH 0.05% pool?", tool: "get_uniswap_v3_pool" },
+    { q: "Who is 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045?",  tool: "inspect_address" },
+    { q: "Get the total supply of USDT on Arbitrum.",           tool: "get_erc20_info" },
+    { q: "Who can blacklist my USDC balance?",                  tool: "get_erc20_info" },
+    { q: "Call balanceOf(0xabc…) on USDC.",                     tool: "read_contract_state" }
+  ].freeze
+
   def home
     if params[:q].present? && params[:q].match?(%r{\A[a-z]+/0x[0-9a-fA-F]{40}\z})
       redirect_to "/#{params[:q]}", status: :moved_permanently
     end
 
     @featured_groups = FEATURED.group_by { |f| f[:category] }
+  end
+
+  def mcp_docs
+    @endpoint_url   = MCP_ENDPOINT_URL
+    @tools          = MCP_TOOLS
+    @example_queries = MCP_EXAMPLE_QUERIES
   end
 end

@@ -94,4 +94,90 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
       assert_response :success, "should render home, not redirect, for q=#{bad.inspect}"
     end
   end
+
+  # ---------- mcp_docs page (host-constrained to mcp.smarts.md) ----------
+
+  test "mcp_docs renders for requests to the mcp.smarts.md host" do
+    host! "mcp.smarts.md"
+    get "/"
+
+    assert_response :success
+    assert_match "Point your AI at smarts.md", response.body
+    assert_match "https://smarts.md/mcp/sse", response.body
+    assert_match "Quick install", response.body
+    assert_match "claude mcp add", response.body
+    assert_match "Ask your AI", response.body
+    assert_match "Tools", response.body
+  end
+
+  test "mcp_docs also renders for the mcp.localhost local-dev alias" do
+    host! "mcp.localhost"
+    get "/"
+
+    assert_response :success
+    assert_match "Point your AI at smarts.md", response.body
+  end
+
+  test "mcp_docs does NOT render for arbitrary other subdomains" do
+    host! "random.smarts.md"
+    get "/"
+
+    # Route doesn't match → falls through to marketing#home or 404
+    refute_match "Point your AI at smarts.md", response.body
+  end
+
+  test "mcp_docs lists every MCP tool exposed by the app" do
+    host! "mcp.smarts.md"
+    get "/"
+
+    MarketingController::MCP_TOOLS.each do |tool|
+      assert_match tool[:name], response.body, "expected tool #{tool[:name]} on mcp_docs"
+    end
+  end
+
+  test "smarts.md root still renders the marketing home (not mcp_docs)" do
+    host! "smarts.md"
+    get "/"
+
+    assert_response :success
+    assert_match "Live docs for every smart contract.", response.body
+    refute_match "Point your AI at smarts.md", response.body,
+                 "main domain must not leak the mcp_docs hero"
+  end
+
+  test "mcp_docs exposes all the tools defined in app/tools/" do
+    app_tool_names = Dir.glob(Rails.root.join("app/tools/*_tool.rb"))
+                        .reject { |p| p.include?("application_tool") }
+                        .map { |p| File.basename(p, "_tool.rb") }
+
+    documented = MarketingController::MCP_TOOLS.map { |t| t[:name] }
+    missing = app_tool_names - documented
+    assert_empty missing, "tools present in app/tools but not on mcp_docs: #{missing.inspect}"
+  end
+
+  # Catches example-query → tool-name drift. If someone renames a tool in
+  # MCP_TOOLS but forgets to update the example, the page would point to a
+  # phantom tool. Structural guard, not runtime check.
+  test "every MCP_EXAMPLE_QUERIES entry references a known tool" do
+    known_tools = MarketingController::MCP_TOOLS.map { |t| t[:name] }
+    MarketingController::MCP_EXAMPLE_QUERIES.each do |ex|
+      assert_includes known_tools, ex[:tool],
+                      "example query #{ex[:q].inspect} references unknown tool #{ex[:tool].inspect}"
+    end
+  end
+
+  # Production-critical guard: the new host-constrained root route MUST NOT
+  # shadow fast-mcp middleware at /mcp/*. If it ever does, AI clients hitting
+  # mcp.smarts.md/mcp/sse would get the marketing HTML page instead of an
+  # MCP SSE stream, and nobody would know until agents silently fail to
+  # connect.
+  test "MCP middleware still serves /mcp on the mcp.smarts.md host (not shadowed by marketing)" do
+    host! "mcp.smarts.md"
+    get "/mcp"
+
+    refute_match "Point your AI at smarts.md", response.body,
+                 "the MCP endpoint path must not render the marketing docs page"
+    assert_match(/jsonrpc/, response.body,
+                 "fast-mcp middleware should respond with JSON-RPC, proving it's still in front of the route")
+  end
 end
