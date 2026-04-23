@@ -1,0 +1,3 @@
+startCommand:
+  type: http
+  url: https://smarts.md/mcp/sse

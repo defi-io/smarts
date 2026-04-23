@@ -1,24 +1,42 @@
-# README
+# smarts.md
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+Live docs for every verified smart contract. Point your AI agent at one URL and ask about any contract on Ethereum, Base, Arbitrum, Optimism, or Polygon.
 
-Things you may want to cover:
+- Web: <https://smarts.md>
+- MCP endpoint: `https://smarts.md/mcp/sse`
+- MCP docs: <https://mcp.smarts.md>
+- Discovery: <https://smarts.md/.well-known/mcp.json>
 
-* Ruby version
+## Add to your AI agent
 
-* System dependencies
+```bash
+# Claude Code
+claude mcp add --transport sse smarts https://smarts.md/mcp/sse
+```
 
-* Configuration
+Cursor / Windsurf / Cline / Claude Desktop: see <https://mcp.smarts.md> for the per-client config snippet.
 
-* Database creation
+## Tools
 
-* Database initialization
+| tool | what |
+|---|---|
+| `get_contract_info`    | metadata + classification + adapter tag |
+| `get_erc20_info`       | supply, price, market cap, issuer, admin controls |
+| `get_uniswap_v3_pool`  | pair, fee, price, liquidity, tick, TVL |
+| `inspect_address`      | EOA vs contract, balance, nonce, reverse ENS |
+| `read_contract_state`  | any view/pure function with args |
 
-* How to run the test suite
+## Ask your AI
 
-* Services (job queues, cache servers, search engines, etc.)
+- "Is `usdc-eth` paused right now?"
+- "TVL of `univ3-usdc-weth-eth`?"
+- "Who is `0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045`?"
+- "Total supply of `usdc-arbitrum`."
 
-* Deployment instructions
+## Stack
 
-* ...
+Rails 8 + Postgres 17 + Hotwire + Tailwind, deployed via Kamal 2 to Hetzner. No TypeScript, no Node services. MCP server via `fast-mcp`.
+
+## License
+
+Source-available; license decision pending before open-sourcing.
