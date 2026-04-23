@@ -75,4 +75,34 @@ class MarketingController < ApplicationController
     @tools          = MCP_TOOLS
     @example_queries = MCP_EXAMPLE_QUERIES
   end
+
+  # Forward-looking discovery manifest. MCP spec hasn't formalized a
+  # well-known path yet (2026-04), but publishing it now is cheap,
+  # self-documenting, and front-loads us for whatever standard emerges.
+  def well_known_mcp
+    response.set_header("Cache-Control", "public, max-age=3600")
+    response.set_header("Access-Control-Allow-Origin", "*")
+
+    render json: {
+      name: "smarts",
+      version: "0.1.0",
+      description: "Live docs for every verified smart contract. MCP access to on-chain state, prices, issuer, and admin controls.",
+      homepage_url: "https://smarts.md/",
+      documentation_url: "https://mcp.smarts.md/",
+      protocol_version: "2024-11-05",
+      transports: [
+        {
+          type: "sse",
+          endpoint: "https://smarts.md/mcp/sse",
+          messages: "https://smarts.md/mcp/messages"
+        }
+      ],
+      capabilities: {
+        tools: true,
+        resources: false,
+        prompts: false
+      },
+      tools: MCP_TOOLS.map { |t| { name: t[:name], description: t[:blurb] } }
+    }
+  end
 end
