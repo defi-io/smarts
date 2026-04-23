@@ -111,6 +111,40 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     refute_match %r{<meta property="og:description" content="[^"]*\(ERC-20 Token\)}, response.body
   end
 
+  # When the on-chain ERC-20 name() call succeeds, every page-level display
+  # point — H1, <title>, og:title, breadcrumb entry, JSON-LD about.name —
+  # must switch to the brand name, not the Solidity class name Etherscan
+  # returned. Regression locks on the "FiatTokenV2_2 vs USD Coin" bug.
+  test "contract page uses on-chain name() as the display name across title, H1, OG, breadcrumb, and JSON-LD" do
+    contract = contracts(:uni_token)
+    contract.update!(name: "FiatTokenV2_2")
+
+    brand_name = ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ])
+    brand_symbol = ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ])
+
+    stub_class_method(ChainReader::ViewCaller, :call,
+      ->(_c) { { "name()" => brand_name, "symbol()" => brand_symbol } }) do
+      get contract_path(chain: "eth", address: contract.address)
+    end
+
+    assert_response :success
+    assert_select "h1", "USD Coin"
+    assert_match %r{<title>USD Coin on Ethereum — live on-chain contract docs \| smarts.md</title>}, response.body
+    assert_match %r{<meta property="og:title" content="USD Coin on Ethereum — live on-chain contract docs \| smarts.md">}, response.body
+
+    breadcrumb = response.body.scan(%r{<script type="application/ld\+json">(.+?)</script>}m)
+                              .map { |m| JSON.parse(m[0]) }
+                              .find { |j| j["@type"] == "BreadcrumbList" }
+    assert_equal "USD Coin on Ethereum", breadcrumb["itemListElement"][1]["name"]
+
+    webpage = response.body.scan(%r{<script type="application/ld\+json">(.+?)</script>}m)
+                            .map { |m| JSON.parse(m[0]) }
+                            .find { |j| j["@type"] == "WebPage" }
+    assert_equal "USD Coin", webpage["about"]["name"]
+
+    refute_match "FiatTokenV2_2", response.body, "Solidity class name must not leak anywhere on the rendered page"
+  end
+
   # The SEO helper runs in the layout, which is shared with error-state views.
   # If a helper call raises or emits nothing on these pages, a future change
   # would degrade our 404/500 discoverability without any louder signal.

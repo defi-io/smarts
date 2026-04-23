@@ -92,6 +92,23 @@ module ContractsHelper
     end
   end
 
+  # Brand-first display name with fallback chain.
+  #
+  # Etherscan returns the Solidity class name (e.g. "FiatTokenV2_2") for many
+  # proxy-deployed tokens. That's what we store on `contract.name`. But the
+  # on-chain ERC-20 `name()` function returns the actual brand ("USD Coin"),
+  # which is what users — and SEO / breadcrumbs — should see.
+  #
+  # Reads from `@live_values` which the controller populates via
+  # ChainReader::ViewCaller. For non-ERC-20 contracts `name()` / `symbol()`
+  # won't be in the ABI, so we fall through to the Solidity class name.
+  def contract_display_name
+    live_value("name()").to_s.presence ||
+      live_value("symbol()").to_s.presence ||
+      @contract&.name.presence ||
+      "Unknown Contract"
+  end
+
   # Truncated "0xa0b8…eb48" for inline display. First 6 + last 4.
   def truncate_address(addr)
     return nil unless addr.is_a?(String) && addr.start_with?("0x") && addr.length >= 12

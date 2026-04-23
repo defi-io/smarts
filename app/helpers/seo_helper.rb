@@ -50,10 +50,15 @@ module SeoHelper
 
   # JSON-LD for a contract page. Uses schema.org WebPage wrapping a
   # SoftwareApplication entity that describes the contract itself.
-  def contract_json_ld(contract:, chain:, classification: nil)
+  #
+  # `display_name` is the brand-first resolved name (e.g. "USD Coin"), passed
+  # in from the view so the JSON-LD matches what the page actually shows. Pass
+  # nil and the helper falls back to `contract.name` (the Solidity class name
+  # from Etherscan), which is only the right answer for non-proxy contracts.
+  def contract_json_ld(contract:, chain:, classification: nil, display_name: nil)
     app = {
       "@type"               => "SoftwareApplication",
-      "name"                => contract.name.presence || "Unknown Contract",
+      "name"                => display_name.presence || contract.name.presence || "Unknown Contract",
       "applicationCategory" => "SmartContract",
       "operatingSystem"     => chain.name,
       "identifier"          => contract.address

@@ -1,7 +1,7 @@
 <%= turbo_stream_from @contract %>
 
 <%
-  contract_name = @contract.name.presence || "Unknown Contract"
+  contract_name = contract_display_name
   seo_title = "#{contract_name} on #{@chain.name} — live on-chain contract docs"
   seo_desc  =
     if @classification&.display_name.present?
@@ -15,7 +15,7 @@
 %>
 
 <% content_for :head do %>
-  <%= contract_json_ld(contract: @contract, chain: @chain, classification: @classification) %>
+  <%= contract_json_ld(contract: @contract, chain: @chain, classification: @classification, display_name: contract_name) %>
   <%= breadcrumb_json_ld([
     { name: "Smarts", url: "#{SeoHelper::SITE_URL}/" },
     { name: "#{contract_name} on #{@chain.name}", url: seo_canonical }
@@ -25,7 +25,7 @@
 <div class="max-w-5xl mx-auto py-8 px-4">
   <div class="mb-8">
     <div class="flex items-center gap-3 mb-2 flex-wrap">
-      <h1 class="text-3xl font-bold"><%= @contract.name.presence || "Unknown Contract" %></h1>
+      <h1 class="text-3xl font-bold"><%= contract_name %></h1>
       <span class="badge badge-primary"><%= @chain.name %></span>
       <% if @classification %>
         <span class="badge badge-outline" title="<%= @classification.description %>">

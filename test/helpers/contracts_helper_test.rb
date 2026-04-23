@@ -262,6 +262,61 @@ class ContractsHelperTest < ActionView::TestCase
     refute_includes html, "55,046,395,721,805,492"
   end
 
+  # ---------- contract_display_name ----------
+
+  test "contract_display_name prefers on-chain name() over contract.name" do
+    @contract = OpenStruct.new(name: "FiatTokenV2_2")
+    @live_values = {
+      "name()"   => ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ]),
+      "symbol()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ])
+    }
+    assert_equal "USD Coin", contract_display_name
+  end
+
+  test "contract_display_name falls back to symbol() when on-chain name() is missing" do
+    @contract = OpenStruct.new(name: "FiatTokenV2_2")
+    @live_values = {
+      "symbol()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ])
+    }
+    assert_equal "USDC", contract_display_name
+  end
+
+  test "contract_display_name falls back to contract.name when neither on-chain call is available" do
+    @contract = OpenStruct.new(name: "FiatTokenV2_2")
+    @live_values = {}
+    assert_equal "FiatTokenV2_2", contract_display_name
+  end
+
+  test "contract_display_name returns 'Unknown Contract' when everything is empty" do
+    @contract = OpenStruct.new(name: nil)
+    @live_values = {}
+    assert_equal "Unknown Contract", contract_display_name
+  end
+
+  test "contract_display_name ignores reverted on-chain calls" do
+    @contract = OpenStruct.new(name: "FiatTokenV2_2")
+    @live_values = {
+      "name()"   => ChainReader::Multicall3Client::Result.new(success: false, error: "reverted"),
+      "symbol()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ])
+    }
+    assert_equal "USDC", contract_display_name
+  end
+
+  test "contract_display_name treats empty-string on-chain values as absent" do
+    @contract = OpenStruct.new(name: "FiatTokenV2_2")
+    @live_values = {
+      "name()"   => ChainReader::Multicall3Client::Result.new(success: true, values: [ "" ]),
+      "symbol()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ])
+    }
+    assert_equal "USDC", contract_display_name
+  end
+
+  test "contract_display_name is nil-safe when @live_values is nil" do
+    @contract = OpenStruct.new(name: "FiatTokenV2_2")
+    @live_values = nil
+    assert_equal "FiatTokenV2_2", contract_display_name
+  end
+
   # ---------- explorer_address_url / explorer_name / truncate_address ----------
 
   test "explorer_address_url maps supported chain slugs to their block explorer" do

@@ -123,6 +123,39 @@ class SeoHelperTest < ActionView::TestCase
     assert_equal "MIT", data["about"]["license"]
   end
 
+  test "contract_json_ld uses display_name parameter when provided, overriding contract.name" do
+    contract = OpenStruct.new(name: "FiatTokenV2_2", address: "0xa0b8", compiler_version: nil, license: nil)
+    chain = OpenStruct.new(name: "Ethereum")
+    seo_meta canonical: "https://smarts.md/usdc-eth"
+
+    html = contract_json_ld(contract: contract, chain: chain, classification: nil, display_name: "USD Coin")
+    data = JSON.parse(html.match(%r{<script[^>]*>(.+)</script>}m)[1])
+
+    assert_equal "USD Coin", data["about"]["name"]
+  end
+
+  test "contract_json_ld falls back to contract.name when display_name is nil or blank" do
+    contract = OpenStruct.new(name: "FiatTokenV2_2", address: "0xa0b8", compiler_version: nil, license: nil)
+    chain = OpenStruct.new(name: "Ethereum")
+    seo_meta canonical: "https://smarts.md/usdc-eth"
+
+    [ nil, "" ].each do |empty|
+      html = contract_json_ld(contract: contract, chain: chain, classification: nil, display_name: empty)
+      data = JSON.parse(html.match(%r{<script[^>]*>(.+)</script>}m)[1])
+      assert_equal "FiatTokenV2_2", data["about"]["name"], "expected fallback for display_name=#{empty.inspect}"
+    end
+  end
+
+  test "contract_json_ld falls back to 'Unknown Contract' when both display_name and contract.name are blank" do
+    contract = OpenStruct.new(name: nil, address: "0xabc", compiler_version: nil, license: nil)
+    chain = OpenStruct.new(name: "Ethereum")
+    seo_meta canonical: "https://smarts.md/eth/0xabc"
+
+    html = contract_json_ld(contract: contract, chain: chain, classification: nil, display_name: nil)
+    data = JSON.parse(html.match(%r{<script[^>]*>(.+)</script>}m)[1])
+    assert_equal "Unknown Contract", data["about"]["name"]
+  end
+
   test "contract_json_ld omits softwareVersion and license when blank" do
     contract = OpenStruct.new(name: "Thing", address: "0xabc", compiler_version: nil, license: nil)
     chain = OpenStruct.new(name: "Ethereum")
