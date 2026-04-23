@@ -2,22 +2,22 @@
 
 class GetUniswapV3PoolTool < ApplicationTool
   tool_name "get_uniswap_v3_pool"
-  description "Get live state of a Uniswap V3 pool: token pair, fee tier, current price (both directions), active liquidity, current tick, and TVL in USD (via DefiLlama token prices)."
+  description "Get live state of a Uniswap V3 pool: token pair, fee tier, current price (both directions), active liquidity, current tick, and TVL in USD (via DefiLlama token prices). Accepts slug or chain+address."
 
   arguments do
-    required(:chain).filled(:string)
-      .description("Chain slug: eth, base, arbitrum, optimism, or polygon.")
-    required(:address).filled(:string)
-      .description("Pool address (0x-prefixed).")
+    optional(:slug).filled(:string)
+      .description("Curated slug like 'univ3-usdc-weth-eth'. Alternative to chain+address.")
+    optional(:chain).filled(:string)
+      .description("Chain slug: eth, base, arbitrum, optimism, or polygon. Required unless `slug` is given.")
+    optional(:address).filled(:string)
+      .description("Pool address (0x-prefixed). Required unless `slug` is given.")
   end
 
-  def call(chain:, address:)
-    chain_record = Chain.find_by(slug: chain)
-    return { error: "unknown chain: #{chain}" } unless chain_record
+  def call(chain: nil, address: nil, slug: nil)
+    resolved = resolve_contract(chain: chain, address: address, slug: slug)
+    return resolved if resolved.is_a?(Hash)
 
-    contract = Contract.find_by(chain: chain_record, address: address.downcase)
-    return { error: "pool not indexed — visit https://smarts.md/#{chain}/#{address} first" } unless contract
-
+    _chain_record, contract = resolved
     adapter = ProtocolAdapters::Base.resolve(contract)
     unless adapter.is_a?(ProtocolAdapters::UniswapV3Adapter)
       return { error: "not a Uniswap V3 pool" }

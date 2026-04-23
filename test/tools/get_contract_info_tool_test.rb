@@ -12,7 +12,27 @@ class GetContractInfoToolTest < ActiveSupport::TestCase
 
   test "returns error when contract is not indexed" do
     result = @tool.call(chain: "eth", address: "0x" + "0" * 40)
-    assert_match(/not found/, result[:error])
+    assert_match(/not indexed/, result[:error])
+  end
+
+  test "accepts a slug instead of chain+address" do
+    contract = contracts(:uni_token)
+    contract.update!(address: "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984") # matches uni-eth slug
+
+    result = @tool.call(slug: "uni-eth")
+    assert_equal "Uni", result[:name]
+    assert_equal "eth", result[:chain]
+    assert_equal "uni-eth", result[:slug]
+  end
+
+  test "returns error for unknown slug" do
+    result = @tool.call(slug: "nonexistent-eth")
+    assert_match(/unknown slug/, result[:error])
+  end
+
+  test "returns error when neither slug nor chain+address is provided" do
+    result = @tool.call
+    assert_match(/either.*slug.*chain.*address/, result[:error])
   end
 
   test "returns structured metadata for an indexed contract" do

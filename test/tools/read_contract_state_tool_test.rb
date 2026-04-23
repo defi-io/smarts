@@ -58,6 +58,25 @@ class ReadContractStateToolTest < ActiveSupport::TestCase
     end
   end
 
+  test "accepts a slug instead of chain+address" do
+    @contract.update!(address: "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984") # matches uni-eth
+    stub_success([ 1_000_000 ]) do
+      result = @tool.call(slug: "uni-eth", function_name: "totalSupply")
+      assert result[:success]
+      assert_equal [ 1_000_000 ], result[:values]
+    end
+  end
+
+  test "returns error for unknown slug" do
+    result = @tool.call(slug: "nonexistent-eth", function_name: "totalSupply")
+    assert_match(/unknown slug/, result[:error])
+  end
+
+  test "returns error when neither slug nor chain+address is provided" do
+    result = @tool.call(function_name: "totalSupply")
+    assert_match(/either.*slug.*chain.*address/, result[:error])
+  end
+
   private
 
   def stub_success(values, &block)
