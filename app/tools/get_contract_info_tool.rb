@@ -2,29 +2,30 @@
 
 class GetContractInfoTool < ApplicationTool
   tool_name "get_contract_info"
-  description "Get metadata about a verified smart contract: name, compiler, classification, supported adapters, and counts of functions and events."
+  description "Get metadata about a verified smart contract: name, compiler, classification, supported adapters, and counts of functions and events. Accepts either a curated slug (uni-eth, usdc-base, …) or chain+address."
 
   arguments do
-    required(:chain).filled(:string)
-      .description("Chain slug: eth, base, arbitrum, optimism, or polygon.")
-    required(:address).filled(:string)
-      .description("The 0x-prefixed EVM contract address.")
+    optional(:slug).filled(:string)
+      .description("Curated slug like 'uni-eth' or 'univ3-usdc-weth-eth'. Alternative to chain+address.")
+    optional(:chain).filled(:string)
+      .description("Chain slug: eth, base, arbitrum, optimism, or polygon. Required unless `slug` is given.")
+    optional(:address).filled(:string)
+      .description("The 0x-prefixed EVM contract address. Required unless `slug` is given.")
   end
 
-  def call(chain:, address:)
-    chain_record = Chain.find_by(slug: chain)
-    return { error: "unknown chain: #{chain}" } unless chain_record
+  def call(chain: nil, address: nil, slug: nil)
+    resolved = resolve_contract(chain: chain, address: address, slug: slug)
+    return resolved if resolved.is_a?(Hash)
 
-    contract = Contract.find_by(chain: chain_record, address: address.downcase)
-    return { error: "contract not found — visit #{chain}/#{address} to have it indexed first" } unless contract
-
+    _chain_record, contract = resolved
     classification = ContractDocument::Classifier.call(contract)
     adapter = ProtocolAdapters::Base.resolve(contract)
 
     {
       name: contract.name,
-      chain: chain,
+      chain: contract.chain.slug,
       address: contract.address,
+      slug: ContractSlugs.for(contract.chain.slug, contract.address),
       compiler_version: contract.compiler_version,
       classification: classification&.protocol_key,
       classification_display: classification&.display_name,

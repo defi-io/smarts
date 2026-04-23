@@ -50,6 +50,25 @@ class GetUniswapV3PoolToolTest < ActiveSupport::TestCase
     end
   end
 
+  test "accepts a slug instead of chain+address" do
+    # Seed a V3 pool contract at the canonical univ3-usdc-weth-eth slug address
+    pool = Contract.create!(chain: chains(:ethereum),
+                            address: "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640",
+                            name: "V3 Pool", abi: [])
+    fake_adapter = FakeV3Adapter.new(canned_panel_data)
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_c) { fake_adapter }) do
+      result = @tool.call(slug: "univ3-usdc-weth-eth")
+      assert_equal "Uniswap V3", result[:protocol]
+      assert_equal "USDC/WETH", result[:pair]
+    end
+  end
+
+  test "returns error for unknown slug" do
+    result = @tool.call(slug: "nonexistent-eth")
+    assert_match(/unknown slug/, result[:error])
+  end
+
   private
 
   def canned_panel_data
