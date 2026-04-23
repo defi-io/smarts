@@ -57,7 +57,7 @@ module ProtocolAdapters
     WETH_I   = { name: "Wrapped Ether",  url: nil }.freeze
     WBTC_I   = { name: "BitGo (WBTC)",   url: "https://wbtc.network/" }.freeze
     WBTC_B   = { name: "BitGo (bridged)", url: "https://wbtc.network/" }.freeze
-    POLY_M   = { name: "Polygon (WMATIC)", url: "https://polygon.technology/" }.freeze
+    POLY_M   = { name: "Polygon (WPOL)", url: "https://polygon.technology/" }.freeze
 
     ISSUERS = {
       "eth" => {

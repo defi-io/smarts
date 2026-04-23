@@ -34,8 +34,11 @@ class MarketingController < ApplicationController
       symbol: "USDC", name: "USD Coin (Base)",     blurb: "Native Circle-issued USDC on Base." },
     { category: "Multi-chain", chain: "arbitrum", address: "0xaf88d065e77c8cc2239327c5edb3a432268e5831",
       symbol: "USDC", name: "USD Coin (Arbitrum)", blurb: "Native Circle-issued USDC on Arbitrum One." },
+    # Polygon rebranded MATIC → POL in 2024 and updated this contract's on-chain
+    # name()/symbol() accordingly. Card now matches on-chain truth; blurb
+    # preserves the WMATIC tie-in for users arriving on legacy mental models.
     { category: "Multi-chain", chain: "polygon",  address: "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270",
-      symbol: "WMATIC", name: "Wrapped MATIC",      blurb: "Polygon's canonical wrapped gas token." }
+      symbol: "WPOL", name: "Wrapped POL",          blurb: "Polygon's canonical wrapped gas token (formerly WMATIC)." }
   ].freeze
 
   CHAIN_LABELS = {

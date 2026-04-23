@@ -46,7 +46,7 @@ Supported chains (slug suffix in parentheses): Ethereum (`-eth`), Base (`-base`)
 - [Uniswap V3 USDC/WETH 0.05% pool](https://smarts.md/univ3-usdc-weth-eth)
 - [USDC on Base](https://smarts.md/usdc-base)
 - [USDC on Arbitrum](https://smarts.md/usdc-arbitrum)
-- [Wrapped MATIC on Polygon](https://smarts.md/wmatic-polygon)
+- [Wrapped POL on Polygon](https://smarts.md/wmatic-polygon)
 
 ## Scope and limits
 

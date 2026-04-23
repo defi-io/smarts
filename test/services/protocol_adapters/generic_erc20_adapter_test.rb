@@ -201,9 +201,12 @@ class ProtocolAdapters::GenericErc20AdapterTest < ActiveSupport::TestCase
     end
   end
 
-  test "WMATIC on Polygon is recognised with the Polygon label" do
+  # Post-2024 rebrand: on-chain name()/symbol() now return "Wrapped Polygon
+  # Ecosystem Token"/"WPOL". Issuer badge updated to match; if the token
+  # rebrands again, update POLY_M and this assertion together.
+  test "WPOL (formerly WMATIC) on Polygon is recognised with the Polygon label" do
     i = issuer_for("polygon", "0x0d500b1d8e8ef31e21c99d1db9a6444d3adf1270")
-    assert_equal "Polygon (WMATIC)", i[:name]
+    assert_equal "Polygon (WPOL)", i[:name]
   end
 
   # Structural guards — catch typos / duplicates when the constant is edited.
