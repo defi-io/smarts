@@ -28,6 +28,9 @@
             </div>
           <% end %>
         </div>
+        <% if (tag = panel_freshness_tag(data)) %>
+          <div class="self-start"><%= tag %></div>
+        <% end %>
       </div>
 
       <div class="mt-6 flex flex-wrap gap-8">

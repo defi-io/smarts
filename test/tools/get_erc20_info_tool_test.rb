@@ -99,6 +99,27 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
     assert_match(/not indexed/, result[:error])
   end
 
+  test "exposes block_number and ISO-8601 fetched_at to the AI consumer" do
+    seed_usdc_like_contract
+    typed_batch = ->(chain:, calls:) do
+      ChainReader::Multicall3Client::Batch.new(
+        block_number: 24_500_000,
+        results: stub_multicall_for_erc20_with_admin.call(chain: chain, calls: calls)
+      )
+    end
+
+    stub_class_method(ChainReader::Multicall3Client, :call, typed_batch) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, ->(**_) { {} }) do
+        result = @tool.call(chain: "eth", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+
+        assert_equal 24_500_000, result[:block_number]
+        assert_kind_of String, result[:fetched_at]
+        assert_match(/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, result[:fetched_at],
+                     "fetched_at must be ISO-8601")
+      end
+    end
+  end
+
   # If the on-chain multicall for metadata fails, panel_data returns
   # {error: "..."}. The tool must surface it rather than return partial data.
   test "surfaces panel_data errors from the adapter" do

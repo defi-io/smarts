@@ -89,7 +89,7 @@ module ProtocolAdapters
     private
 
     def cache_key
-      "protocol_panel:uniswap_v3:#{chain.slug}:#{contract.address}"
+      "protocol_panel:uniswap_v3:v2:#{chain.slug}:#{contract.address}"
     end
 
     def read_panel_data
@@ -114,7 +114,9 @@ module ProtocolAdapters
         price_1_per_0: price_1_per_0,
         price_0_per_1: (price_1_per_0 && price_1_per_0 > 0) ? 1.0 / price_1_per_0 : nil,
         tvl_usd: tvl_usd,
-        usd_prices: usd_prices
+        usd_prices: usd_prices,
+        block_number: [ pool[:block_number], tokens[:block_number] ].compact.min,
+        fetched_at: Time.current
       }
     end
 
@@ -122,11 +124,11 @@ module ProtocolAdapters
       calls = POOL_STATE_ABI.map do |fn|
         ChainReader::Multicall3Client::Call.new(target: contract.address, function: fn)
       end
-      results = ChainReader::Multicall3Client.call(chain: chain, calls: calls)
+      batch = ChainReader::Multicall3Client.call(chain: chain, calls: calls)
 
-      return nil unless results.all?(&:success)
+      return nil unless batch.results.all?(&:success)
 
-      token0, token1, fee, liquidity, slot0 = results.map { |r| r.values.first }
+      token0, token1, fee, liquidity, slot0 = batch.results.map { |r| r.values.first }
 
       {
         token0: token0,
@@ -134,7 +136,8 @@ module ProtocolAdapters
         fee: fee,
         liquidity: liquidity,
         sqrt_price_x96: slot0[0],
-        tick: slot0[1]
+        tick: slot0[1],
+        block_number: batch.block_number
       }
     end
 
@@ -147,7 +150,8 @@ module ProtocolAdapters
         ChainReader::Multicall3Client::Call.new(target: addr1, function: ERC20_DECIMALS),
         ChainReader::Multicall3Client::Call.new(target: addr1, function: ERC20_BALANCE_OF, args: [ pool_addr ])
       ]
-      r = ChainReader::Multicall3Client.call(chain: chain, calls: calls)
+      batch = ChainReader::Multicall3Client.call(chain: chain, calls: calls)
+      r = batch.results
 
       {
         token0: {
@@ -159,7 +163,8 @@ module ProtocolAdapters
           symbol:   r[3].success ? r[3].values.first : "?",
           decimals: r[4].success ? r[4].values.first : 18,
           reserve:  r[5].success ? r[5].values.first : nil
-        }
+        },
+        block_number: batch.block_number
       }
     end
 

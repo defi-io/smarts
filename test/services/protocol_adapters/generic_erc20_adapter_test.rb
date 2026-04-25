@@ -403,4 +403,48 @@ class ProtocolAdapters::GenericErc20AdapterTest < ActiveSupport::TestCase
       end
     end
   end
+
+  # ---------- block-anchored freshness ----------
+
+  test "panel_data records block_number and fetched_at from the multicall batch" do
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(@contract)
+
+    stub = lambda do |chain:, calls:|
+      ChainReader::Multicall3Client::Batch.new(
+        block_number: 24_500_000,
+        results: [
+          ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ]),
+          ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ]),
+          ChainReader::Multicall3Client::Result.new(success: true, values: [ 6 ]),
+          ChainReader::Multicall3Client::Result.new(success: true, values: [ 10**18 ])
+        ]
+      )
+    end
+
+    stub_class_method(ChainReader::Multicall3Client, :call, stub) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, ->(**_) { {} }) do
+        before = Time.current
+        data = adapter.panel_data
+        after = Time.current
+
+        assert_equal 24_500_000, data[:block_number],
+                     "panel_data must surface the multicall batch's block_number"
+        assert_kind_of Time, data[:fetched_at]
+        assert data[:fetched_at] >= before && data[:fetched_at] <= after
+      end
+    end
+  end
+
+  test "panel_data block_number is nil when multicall raises (degraded mode)" do
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(@contract)
+    raising = ->(**_) { raise ChainReader::Base::RpcError, "node down" }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, raising) do
+      data = adapter.panel_data
+      # Symbol/decimals couldn't be read → error result. Confirm we don't
+      # crash and degrade cleanly without polluting the cache with stale
+      # block data.
+      assert_equal "could not read token metadata", data[:error]
+    end
+  end
 end

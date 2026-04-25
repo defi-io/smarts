@@ -128,12 +128,43 @@ class ChainReader::BaseTest < ActiveSupport::TestCase
     assert_equal Encoding::ASCII_8BIT, result.encoding, "mustn't silently mis-tag garbage"
   end
 
+  # ---------- eth_block_number ----------
+
+  test "eth_block_number parses hex result from JSON-RPC response hash" do
+    fake = FakeRpcClient.new({ "jsonrpc" => "2.0", "id" => 1, "result" => "0x17cf8c3" })
+    stub_class_method(ChainReader::Base, :client_for, ->(_chain) { fake }) do
+      assert_equal 24_967_363, ChainReader::Base.eth_block_number(@chain)
+    end
+  end
+
+  test "eth_block_number raises RpcError when JSON-RPC reports error" do
+    fake = FakeRpcClient.new({ "error" => { "code" => -32603, "message" => "node syncing" } })
+    stub_class_method(ChainReader::Base, :client_for, ->(_chain) { fake }) do
+      err = assert_raises(ChainReader::Base::RpcError) do
+        ChainReader::Base.eth_block_number(@chain)
+      end
+      assert_match(/-32603/, err.message)
+      assert_match(/node syncing/, err.message)
+    end
+  end
+
+  test "eth_block_number accepts raw hex string response (non-hash client)" do
+    fake = FakeRpcClient.new("0x10")
+    stub_class_method(ChainReader::Base, :client_for, ->(_chain) { fake }) do
+      assert_equal 16, ChainReader::Base.eth_block_number(@chain)
+    end
+  end
+
   class FakeRpcClient
     def initialize(response)
       @response = response
     end
 
     def eth_call(_params)
+      @response
+    end
+
+    def eth_block_number
       @response
     end
   end

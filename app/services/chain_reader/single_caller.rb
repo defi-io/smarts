@@ -4,8 +4,9 @@ module ChainReader
   # all zero-arg functions, this one is tighter and supports arguments.
   class SingleCaller
     CACHE_TTL = 60.seconds
+    CACHE_VERSION = "v2"
 
-    Result = Struct.new(:success, :values, :error, :block_number, keyword_init: true) do
+    Result = Struct.new(:success, :values, :error, :block_number, :fetched_at, keyword_init: true) do
       def value
         values&.first
       end
@@ -34,17 +35,18 @@ module ChainReader
       fn = find_function
       calldata = Base.selector(Base.function_signature(fn)) + encoded_args(fn)
       hex = Base.eth_call_hex(@chain, to: @contract.address, data: calldata)
+      block_number = safe_block_number
 
       outputs = Array(fn["outputs"])
       types = outputs.map { |o| Base.abi_type_string(o) }
       values = types.empty? ? [] : Eth::Abi.decode(types, Base.hex_to_bytes(hex))
       values = values.map.with_index { |v, i| Base.retag_string_encoding(v, outputs[i]) }
 
-      Result.new(success: true, values: values, error: nil, block_number: nil)
+      Result.new(success: true, values: values, error: nil, block_number: block_number, fetched_at: Time.current)
     rescue FunctionNotFound => e
       raise e
     rescue Eth::Abi::DecodingError, Base::RpcError => e
-      Result.new(success: false, values: nil, error: e.message, block_number: nil)
+      Result.new(success: false, values: nil, error: e.message, block_number: nil, fetched_at: Time.current)
     end
 
     def find_function
@@ -68,8 +70,18 @@ module ChainReader
       Eth::Abi.encode(types, @args).unpack1("H*")
     end
 
+    # block_number is best-effort: a failed eth_blockNumber RPC must not turn a
+    # successful read into a failed result. Catches StandardError to also
+    # absorb misconfigured chains (no rpc_url) and other plumbing issues.
+    def safe_block_number
+      Base.eth_block_number(@chain)
+    rescue StandardError => e
+      Rails.logger.warn("[SingleCaller] eth_blockNumber failed: #{e.class}: #{e.message}")
+      nil
+    end
+
     def cache_key
-      "single_caller:#{@chain.slug}:#{@contract.address}:#{@function_name}:#{@args.inspect}"
+      "single_caller:#{CACHE_VERSION}:#{@chain.slug}:#{@contract.address}:#{@function_name}:#{@args.inspect}"
     end
   end
 end

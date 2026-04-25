@@ -23,8 +23,18 @@
   <section class="mb-8">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-2xl font-semibold">Read Functions</h2>
-      <% if @live_values.present? %>
-        <span class="text-xs opacity-60">Live from chain · cached 60s</span>
+      <% if @live_snapshot&.present? %>
+        <% if @live_snapshot.block_number %>
+          <span class="text-xs opacity-60 font-mono"
+                title="Read at chain block #<%= @live_snapshot.block_number %>; cached for up to 60s.">
+            Block #<%= number_with_delimiter(@live_snapshot.block_number) %>
+            <% if @live_snapshot.fetched_at %>
+              · <%= freshness_phrase(@live_snapshot.fetched_at) %>
+            <% end %>
+          </span>
+        <% else %>
+          <span class="text-xs opacity-60">Live from chain · cached 60s</span>
+        <% end %>
       <% end %>
     </div>
     <div class="space-y-3">

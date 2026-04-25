@@ -41,6 +41,19 @@ class GetUniswapV3PoolToolTest < ActiveSupport::TestCase
     end
   end
 
+  test "exposes block_number and ISO-8601 fetched_at to the AI consumer" do
+    panel = canned_panel_data.merge(block_number: 24_500_000, fetched_at: Time.utc(2026, 4, 25, 14, 30, 0))
+    fake_adapter = FakeV3Adapter.new(panel)
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_c) { fake_adapter }) do
+      result = @tool.call(chain: "eth", address: @contract.address)
+      assert_equal 24_500_000, result[:block_number],
+                   "AI agents need the block anchor to verify state on-chain"
+      assert_equal "2026-04-25T14:30:00Z", result[:fetched_at],
+                   "fetched_at must be ISO-8601 so cross-tool correlation works"
+    end
+  end
+
   test "surfaces panel errors from the adapter" do
     fake_adapter = FakeV3Adapter.new({ error: "pool state unreadable" })
 

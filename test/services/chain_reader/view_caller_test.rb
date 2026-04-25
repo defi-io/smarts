@@ -122,7 +122,68 @@ class ChainReader::ViewCallerTest < ActiveSupport::TestCase
     end
   end
 
-  test "returns empty hash when contract has no zero-arg view functions" do
+  test "Snapshot carries block_number from the underlying Multicall3 batch" do
+    captured_block = 24_000_000
+    spy = lambda do |chain:, calls:|
+      ChainReader::Multicall3Client::Batch.new(
+        block_number: captured_block,
+        results: calls.map { ChainReader::Multicall3Client::Result.new(success: true, values: [ 0 ]) }
+      )
+    end
+
+    stub_class_method(ChainReader::Multicall3Client, :call, spy) do
+      before = Time.current
+      snapshot = ChainReader::ViewCaller.call(@contract)
+      after  = Time.current
+
+      assert_equal captured_block, snapshot.block_number,
+                   "Snapshot.block_number must reflect the batch we read at"
+      assert_kind_of Time, snapshot.fetched_at
+      assert snapshot.fetched_at >= before && snapshot.fetched_at <= after
+    end
+  end
+
+  test "fallback path captures block_number via eth_blockNumber when multicall fails" do
+    fallback_block = 19_500_000
+    raising = ->(chain:, calls:) { raise ChainReader::Base::RpcError, "multicall failed" }
+
+    name_hex = "0x" + Eth::Abi.encode([ "string" ], [ "Uniswap" ]).unpack1("H*")
+    supply_hex = "0x" + Eth::Abi.encode([ "uint256" ], [ 42 ]).unpack1("H*")
+    single_stub = lambda do |_c, to:, data:|
+      case data[0, 10]
+      when ChainReader::Base.selector("name()") then name_hex
+      when ChainReader::Base.selector("totalSupply()") then supply_hex
+      end
+    end
+
+    stub_class_method(ChainReader::Multicall3Client, :call, raising) do
+      stub_class_method(ChainReader::Base, :eth_call_hex, single_stub) do
+        stub_class_method(ChainReader::Base, :eth_block_number, ->(_c) { fallback_block }) do
+          snapshot = ChainReader::ViewCaller.call(@contract)
+          assert_equal fallback_block, snapshot.block_number,
+                       "fallback must read a fresh block_number, not leave it nil"
+        end
+      end
+    end
+  end
+
+  test "fallback path leaves block_number nil if eth_blockNumber also fails" do
+    raising_multicall = ->(chain:, calls:) { raise ChainReader::Base::RpcError, "multicall down" }
+    raising_block     = ->(_c) { raise ChainReader::Base::RpcError, "block_number down too" }
+    raising_single    = ->(_c, to:, data:) { raise ChainReader::Base::RpcError, "single failed" }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, raising_multicall) do
+      stub_class_method(ChainReader::Base, :eth_call_hex, raising_single) do
+        stub_class_method(ChainReader::Base, :eth_block_number, raising_block) do
+          snapshot = ChainReader::ViewCaller.call(@contract)
+          assert_nil snapshot.block_number,
+                     "double-failure must yield nil block_number, not crash the page"
+        end
+      end
+    end
+  end
+
+  test "returns empty Snapshot when contract has no zero-arg view functions" do
     contract = build_contract_with_abi([
       { "type" => "function", "name" => "balanceOf",
         "inputs" => [ { "type" => "address" } ],
@@ -135,7 +196,10 @@ class ChainReader::ViewCallerTest < ActiveSupport::TestCase
     end
 
     stub_class_method(ChainReader::Multicall3Client, :call, refused) do
-      assert_equal({}, ChainReader::ViewCaller.call(contract))
+      snapshot = ChainReader::ViewCaller.call(contract)
+      assert_kind_of ChainReader::ViewCaller::Snapshot, snapshot
+      assert_empty snapshot
+      assert_nil snapshot.block_number
     end
   end
 

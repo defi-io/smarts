@@ -19,7 +19,8 @@ class ContractsController < ApplicationController
     end
 
     @canonical_slug = ContractSlugs.for(chain_slug, address)
-    @live_values = load_live_values(@contract)
+    @live_snapshot = load_live_values(@contract)
+    @live_values = @live_snapshot
     @protocol_adapter = resolve_protocol_adapter(@contract)
     @classification = classify(@contract)
 
@@ -61,7 +62,7 @@ class ContractsController < ApplicationController
     ChainReader::ViewCaller.call(contract)
   rescue => e
     Rails.logger.warn("[ContractsController] live values failed: #{e.class}: #{e.message}")
-    {}
+    ChainReader::ViewCaller::Snapshot.new(results: {}, block_number: nil, fetched_at: nil)
   end
 
   def resolve_protocol_adapter(contract)

@@ -224,4 +224,54 @@ class ProtocolAdapters::UniswapV3AdapterTest < ActiveSupport::TestCase
       assert_nil adapter.display_name, "case #{i}: expected nil for #{stub.inspect}"
     end
   end
+
+  # ---------- block-anchored freshness ----------
+
+  test "panel_data records block_number = min of pool_state and tokens batches" do
+    adapter = ProtocolAdapters::UniswapV3Adapter.new(@contract)
+
+    multicall_stub = lambda do |chain:, calls:|
+      if calls.first.function["name"] == "token0"
+        # First batch: pool_state — read at later block (e.g. cache hit lag)
+        ChainReader::Multicall3Client::Batch.new(
+          block_number: 19_000_010,
+          results: [
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 500 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 1_000 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ [ 2**96, 0, 0, 0, 0, 0, false ] ])
+          ]
+        )
+      else
+        # Second batch: tokens_and_reserves — read at earlier block. min() must
+        # surface this one (the more conservative truth) so we don't claim
+        # freshness we don't have.
+        ChainReader::Multicall3Client::Batch.new(
+          block_number: 19_000_005,
+          results: [
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 6 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 1_000_000 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "WETH" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 18 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 10**18 ])
+          ]
+        )
+      end
+    end
+
+    stub_class_method(ChainReader::Multicall3Client, :call, multicall_stub) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, ->(**_) { {} }) do
+        before = Time.current
+        data = adapter.panel_data
+        after = Time.current
+
+        assert_equal 19_000_005, data[:block_number],
+                     "panel_data must take the MIN block_number across batches"
+        assert_kind_of Time, data[:fetched_at]
+        assert data[:fetched_at] >= before && data[:fetched_at] <= after
+      end
+    end
+  end
 end

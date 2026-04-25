@@ -40,7 +40,9 @@ class GetErc20InfoTool < ApplicationTool
       market_cap_usd: data[:market_cap_usd],
       issuer: data[:issuer],
       admin_status: data[:admin_status],
-      admin_roles: data[:admin_roles]
+      admin_roles: data[:admin_roles],
+      block_number: data[:block_number],
+      fetched_at: data[:fetched_at]&.iso8601
     }
   end
 end

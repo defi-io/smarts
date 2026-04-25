@@ -30,7 +30,7 @@ class ReadContractStateTool < ApplicationTool
     )
 
     if result.success
-      { success: true, values: result.values }
+      { success: true, values: result.values, block_number: result.block_number }
     else
       { success: false, error: result.error }
     end

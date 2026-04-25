@@ -490,6 +490,103 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_match "→", response.body
   end
 
+  # ---------- block-anchored freshness rendering ----------
+  #
+  # The freshness story is the product's "live docs" promise. Tests exercise
+  # the full path: ViewCaller → Snapshot → controller ivar → ERB partial. We
+  # rely on the test_helper auto-wrap to give the Snapshot a block_number.
+
+  test "show renders panel-level freshness header with block number" do
+    contract = contracts(:uni_token)
+    snapshot = ChainReader::ViewCaller::Snapshot.new(
+      results: { "totalSupply()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ 1 ]) },
+      block_number: 24_500_000,
+      fetched_at: Time.current
+    )
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { snapshot }) do
+      get contract_path(chain: "eth", address: contract.address)
+    end
+
+    assert_response :success
+    assert_match "Block #24,500,000", response.body, "panel-level header must show block number"
+  end
+
+  test "show emits per-row freshness tag for fast-moving fields" do
+    contract = contracts(:uni_token)
+    snapshot = ChainReader::ViewCaller::Snapshot.new(
+      results: { "totalSupply()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ 1 ]) },
+      block_number: 24_500_000,
+      fetched_at: Time.current
+    )
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { snapshot }) do
+      get contract_path(chain: "eth", address: contract.address)
+    end
+
+    # totalSupply isn't on the IMMUTABLE / SLOW whitelists, so it should
+    # carry the full "as of Block #N · just now" freshness tag.
+    assert_match(/as of Block #24,500,000/, response.body)
+  end
+
+  test "show suppresses freshness tag for immutable fields (decimals, symbol, name)" do
+    # Build a contract whose only zero-arg view function is `decimals()` so
+    # we can be sure no other tag pollutes the assertion.
+    contract = Contract.create!(
+      chain: chains(:ethereum),
+      address: "0x" + "f" * 40,
+      name: "ImmutableFieldsOnly",
+      abi: [
+        { "type" => "function", "name" => "decimals", "inputs" => [],
+          "outputs" => [ { "type" => "uint8" } ], "stateMutability" => "view" }
+      ]
+    )
+    snapshot = ChainReader::ViewCaller::Snapshot.new(
+      results: { "decimals()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ 6 ]) },
+      block_number: 24_500_000,
+      fetched_at: Time.current
+    )
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { snapshot }) do
+      stub_class_method(EtherscanClient, :new, ->(_c) {
+        Class.new {
+          def fetch_contract_info(_a)
+            { name: "X", abi: [], compiler_version: nil, source_code: nil,
+              natspec: {}, implementation_address: nil, verified_at: Time.current }
+          end
+        }.new
+      }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    # The panel-level header still shows Block #24,500,000 (that's expected),
+    # but the per-row decimals() entry must NOT have an "as of Block #N" tag
+    # next to its function signature. Slice the docs section and check.
+    docs_section = response.body[/Read Functions.*?<\/section>/m].to_s
+    refute_match(/decimals\(\).*?as of Block/m, docs_section,
+                 "decimals() is constructor-set; per-row freshness would be misleading")
+  end
+
+  test "show falls back gracefully when ViewCaller returns nil block_number" do
+    contract = contracts(:uni_token)
+    snapshot = ChainReader::ViewCaller::Snapshot.new(
+      results: { "totalSupply()" => ChainReader::Multicall3Client::Result.new(success: true, values: [ 1 ]) },
+      block_number: nil,
+      fetched_at: nil
+    )
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { snapshot }) do
+      get contract_path(chain: "eth", address: contract.address)
+    end
+
+    assert_response :success
+    refute_match(/as of Block/, response.body, "no block tag without a block number")
+    # Must still show the legacy 'Live from chain · cached 60s' marker so the
+    # page doesn't go cold-silent.
+    assert_match "Live from chain", response.body
+  end
+
   test "show renders NatSpec notice inline for documented functions" do
     contract = contracts(:uni_token)
     contract.update!(natspec: {

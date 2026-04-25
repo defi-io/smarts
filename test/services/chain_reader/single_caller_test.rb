@@ -125,6 +125,55 @@ class ChainReader::SingleCallerTest < ActiveSupport::TestCase
     end
   end
 
+  test "successful read populates block_number and fetched_at on the Result" do
+    contract = build_contract(abi_totalSupply)
+    hex = "0x" + Eth::Abi.encode([ "uint256" ], [ 1 ]).unpack1("H*")
+    block = 19_999_999
+
+    stub_class_method(ChainReader::Base, :eth_call_hex, ->(_c, **_) { hex }) do
+      stub_class_method(ChainReader::Base, :eth_block_number, ->(_c) { block }) do
+        before = Time.current
+        r = ChainReader::SingleCaller.call(contract: contract, function_name: "totalSupply")
+        after  = Time.current
+
+        assert r.success
+        assert_equal block, r.block_number,
+                     "Result.block_number must reflect the chain head we read at"
+        assert_kind_of Time, r.fetched_at
+        assert r.fetched_at >= before && r.fetched_at <= after
+      end
+    end
+  end
+
+  test "block_number is nil when eth_blockNumber RPC fails (read still succeeds)" do
+    contract = build_contract(abi_totalSupply)
+    hex = "0x" + Eth::Abi.encode([ "uint256" ], [ 1 ]).unpack1("H*")
+
+    raising_block = ->(_c) { raise ChainReader::Base::RpcError, "node down" }
+
+    stub_class_method(ChainReader::Base, :eth_call_hex, ->(_c, **_) { hex }) do
+      stub_class_method(ChainReader::Base, :eth_block_number, raising_block) do
+        r = ChainReader::SingleCaller.call(contract: contract, function_name: "totalSupply")
+        assert r.success, "block_number RPC failure must NOT cause the read to fail"
+        assert_nil r.block_number
+        assert_kind_of Time, r.fetched_at
+      end
+    end
+  end
+
+  test "safe_block_number swallows StandardError (e.g. nil rpc_url)" do
+    # Chain with no rpc_url configured — Eth::Client.create blows up. The
+    # whole point of safe_block_number is the read still returns successfully.
+    contract = build_contract(abi_totalSupply)
+    hex = "0x" + Eth::Abi.encode([ "uint256" ], [ 1 ]).unpack1("H*")
+
+    stub_class_method(ChainReader::Base, :eth_call_hex, ->(_c, **_) { hex }) do
+      r = ChainReader::SingleCaller.call(contract: contract, function_name: "totalSupply")
+      assert r.success
+      assert_nil r.block_number, "missing rpc_url should yield nil block_number, not raise"
+    end
+  end
+
   # Regression guard: when a contract's `symbol()` returns bytes that are
   # valid UTF-8 (like Arbitrum USDT0's "USD₮0"), the ABI decoder tags them
   # ASCII-8BIT. decode_one must retag to UTF-8 so downstream ERB doesn't

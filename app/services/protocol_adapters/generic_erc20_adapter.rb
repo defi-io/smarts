@@ -128,11 +128,11 @@ module ProtocolAdapters
     private
 
     def cache_key
-      "protocol_panel:generic_erc20:#{chain.slug}:#{contract.address}"
+      "protocol_panel:generic_erc20:v2:#{chain.slug}:#{contract.address}"
     end
 
     def read_panel_data
-      token, admin = read_onchain_state
+      token, admin, block_number = read_onchain_state
       return { error: "could not read token metadata" } if token[:symbol].blank? || token[:decimals].nil?
 
       price = fetch_price
@@ -148,13 +148,16 @@ module ProtocolAdapters
         market_cap_usd: market_cap,
         issuer: lookup_issuer,
         admin_status: admin[:status],
-        admin_roles:  admin[:roles]
+        admin_roles:  admin[:roles],
+        block_number: block_number,
+        fetched_at: Time.current
       }
     end
 
-    # Returns [token_metadata_hash, admin_hash] from a single multicall that
-    # bundles the 4 core ERC-20 fields with any admin functions present in the
-    # ABI. Admin functions not in the ABI are skipped (no probe RPC cost).
+    # Returns [token_metadata_hash, admin_hash, block_number] from a single
+    # multicall that bundles the 4 core ERC-20 fields with any admin functions
+    # present in the ABI. Admin functions not in the ABI are skipped (no probe
+    # RPC cost).
     def read_onchain_state
       admin_probe_status = admin_functions_in_abi(ADMIN_STATUS_FUNCTIONS)
       admin_probe_roles  = admin_functions_in_abi(ADMIN_ROLE_FUNCTIONS)
@@ -165,7 +168,8 @@ module ProtocolAdapters
       calls = (core_abis + admin_abis).map do |fn_abi|
         ChainReader::Multicall3Client::Call.new(target: contract.address, function: fn_abi)
       end
-      r = ChainReader::Multicall3Client.call(chain: chain, calls: calls)
+      batch = ChainReader::Multicall3Client.call(chain: chain, calls: calls)
+      r = batch.results
 
       core_results, admin_results = r.first(4), r.drop(4)
       status_results = admin_results.first(admin_probe_status.length)
@@ -183,10 +187,10 @@ module ProtocolAdapters
         roles:  admin_probe_roles.zip(role_results).filter_map  { |fn, res| build_admin_entry(fn, res) }
       }
 
-      [ token, admin ]
+      [ token, admin, batch.block_number ]
     rescue StandardError => e
       Rails.logger.warn("[GenericErc20Adapter] onchain read failed: #{e.class}: #{e.message}")
-      [ { name: nil, symbol: nil, decimals: nil, total_supply: nil }, { status: [], roles: [] } ]
+      [ { name: nil, symbol: nil, decimals: nil, total_supply: nil }, { status: [], roles: [] }, nil ]
     end
 
     # From the given list of admin function specs, return only those whose

@@ -15,6 +15,9 @@
             <span class="badge badge-outline ml-2"><%= data[:fee_pct] %></span>
           </h2>
         </div>
+        <% if (tag = panel_freshness_tag(data)) %>
+          <div class="self-start"><%= tag %></div>
+        <% end %>
       </div>
 
       <% if data[:price_0_per_1] %>

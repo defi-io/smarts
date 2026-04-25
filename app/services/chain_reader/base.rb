@@ -24,6 +24,21 @@ module ChainReader
         end
       end
 
+      # Returns the chain's current block height as an Integer. Used by the
+      # ViewCaller fallback path when Multicall3 is unavailable, since the
+      # batch normally piggybacks getBlockNumber() onto the aggregate3 call.
+      def eth_block_number(chain)
+        raw = client_for(chain).eth_block_number
+        result =
+          if raw.is_a?(Hash)
+            raise RpcError, "#{raw.dig('error', 'code')}: #{raw.dig('error', 'message')}" if raw["error"]
+            raw["result"]
+          else
+            raw
+          end
+        result.to_s.sub(/\A0x/, "").to_i(16)
+      end
+
       def selector(signature)
         "0x" + Eth::Util.keccak256(signature).unpack1("H*")[0..7]
       end

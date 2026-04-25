@@ -407,4 +407,79 @@ class ContractsHelperTest < ActionView::TestCase
   test "format_native_balance handles MATIC symbol" do
     assert_equal "5.50 MATIC", format_native_balance(BigDecimal("5.5") * BigDecimal("1e18"), "MATIC")
   end
+
+  # ---------- block-anchored freshness ----------
+
+  test "freshness_tag_for returns nil when no live snapshot is set" do
+    @live_snapshot = nil
+    fn = { "name" => "totalSupply" }
+    assert_nil freshness_tag_for(fn)
+  end
+
+  test "freshness_tag_for returns nil for whitelisted immutable functions" do
+    @live_snapshot = ChainReader::ViewCaller::Snapshot.new(
+      results: {}, block_number: 19_234_567, fetched_at: Time.current
+    )
+    %w[name symbol decimals factory token0 fee].each do |name|
+      assert_nil freshness_tag_for({ "name" => name }),
+                 "#{name} is constructor-set; the freshness tag would be misleading noise"
+    end
+  end
+
+  test "freshness_tag_for emits Block #N + age for fast-moving fields" do
+    @live_snapshot = ChainReader::ViewCaller::Snapshot.new(
+      results: {}, block_number: 19_234_567, fetched_at: 23.seconds.ago
+    )
+    tag = freshness_tag_for({ "name" => "liquidity" })
+    refute_nil tag
+    assert_match "Block #19,234,567", tag
+    assert_match "23s ago", tag
+  end
+
+  test "freshness_tag_for renders 'just now' for sub-second fetched_at, not 'now ago'" do
+    @live_snapshot = ChainReader::ViewCaller::Snapshot.new(
+      results: {}, block_number: 19_234_567, fetched_at: Time.current
+    )
+    tag = freshness_tag_for({ "name" => "liquidity" })
+    assert_match "just now", tag
+    refute_match "now ago", tag, "should not render the awkward 'now ago' phrase"
+  end
+
+  test "freshness_tag_for emits only Block #N for slow-moving fields (no timestamp)" do
+    @live_snapshot = ChainReader::ViewCaller::Snapshot.new(
+      results: {}, block_number: 19_234_567, fetched_at: 23.seconds.ago
+    )
+    tag = freshness_tag_for({ "name" => "owner" })
+    refute_nil tag
+    assert_match "Block #19,234,567", tag
+    refute_match "ago", tag, "slow fields should not show seconds-ago, since chain-level slowness implies tick-along"
+  end
+
+  test "freshness_tag_for is suppressed when block_number is missing" do
+    @live_snapshot = ChainReader::ViewCaller::Snapshot.new(
+      results: {}, block_number: nil, fetched_at: Time.current
+    )
+    assert_nil freshness_tag_for({ "name" => "liquidity" })
+  end
+
+  test "panel_freshness_tag emits a single header for adapter panels" do
+    data = { block_number: 19_234_567, fetched_at: 4.seconds.ago }
+    tag = panel_freshness_tag(data)
+    refute_nil tag
+    assert_match "Block #19,234,567", tag
+    assert_match "4s ago", tag
+  end
+
+  test "panel_freshness_tag returns nil when block_number is missing" do
+    assert_nil panel_freshness_tag({ block_number: nil, fetched_at: Time.current })
+    assert_nil panel_freshness_tag(nil)
+  end
+
+  test "time_ago_short formats seconds, minutes, hours and now" do
+    assert_equal "now", time_ago_short(Time.current)
+    assert_equal "23s", time_ago_short(23.seconds.ago)
+    assert_equal "4m",  time_ago_short(4.minutes.ago - 1.second)
+    assert_equal "2h",  time_ago_short(2.hours.ago - 1.second)
+    assert_equal "now", time_ago_short(nil)
+  end
 end

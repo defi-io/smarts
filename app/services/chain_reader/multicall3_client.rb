@@ -3,6 +3,15 @@ module ChainReader
     ADDRESS = "0xcA11bde05977b3631167028862bE2a173976CA11"
     AGGREGATE3_SIG = "aggregate3((address,bool,bytes)[])"
 
+    # Multicall3 itself exposes getBlockNumber() — we append it to every batch
+    # so callers get the block height that the read happened at without a
+    # separate RPC.
+    BLOCK_NUMBER_FN = {
+      "name" => "getBlockNumber",
+      "inputs" => [],
+      "outputs" => [ { "type" => "uint256" } ]
+    }.freeze
+
     Call = Struct.new(:target, :function, :args, keyword_init: true) do
       def args
         self[:args] || []
@@ -10,6 +19,8 @@ module ChainReader
     end
 
     Result = Struct.new(:success, :values, :error, keyword_init: true)
+
+    Batch = Struct.new(:block_number, :results, keyword_init: true)
 
     def self.call(chain:, calls:)
       new(chain).call(calls)
@@ -20,9 +31,12 @@ module ChainReader
     end
 
     def call(calls)
-      return [] if calls.empty?
+      return Batch.new(block_number: nil, results: []) if calls.empty?
 
-      tuples = calls.map do |c|
+      block_call = Call.new(target: ADDRESS, function: BLOCK_NUMBER_FN)
+      augmented = calls + [ block_call ]
+
+      tuples = augmented.map do |c|
         [ c.target, true, inner_calldata(c.function, c.args) ]
       end
 
@@ -32,7 +46,12 @@ module ChainReader
       hex = Base.eth_call_hex(@chain, to: ADDRESS, data: agg_data)
       decoded = Eth::Abi.decode([ "(bool,bytes)[]" ], Base.hex_to_bytes(hex))[0]
 
-      decoded.each_with_index.map { |(success, return_data), i| decode_one(calls[i], success, return_data) }
+      per_call_decoded = decoded.first(calls.size)
+      results = per_call_decoded.each_with_index.map { |(success, return_data), i| decode_one(calls[i], success, return_data) }
+
+      block_number = decode_block_number(decoded.last)
+
+      Batch.new(block_number: block_number, results: results)
     end
 
     private
@@ -60,6 +79,15 @@ module ChainReader
       Result.new(success: true, values: values)
     rescue Eth::Abi::DecodingError => e
       Result.new(success: false, error: "decode failed: #{e.message}")
+    end
+
+    def decode_block_number(tuple)
+      success, return_data = tuple
+      return nil unless success
+
+      Eth::Abi.decode([ "uint256" ], return_data).first
+    rescue Eth::Abi::DecodingError
+      nil
     end
   end
 end

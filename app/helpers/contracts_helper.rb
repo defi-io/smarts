@@ -63,6 +63,70 @@ module ContractsHelper
     content_tag(:span, "→ #{parts.join(', ')}", class: "text-success text-xs font-mono break-all")
   end
 
+  # Block-anchored freshness tag for a single read. The block number is the
+  # objective anchor; the "X ago" timestamp tells you how long since we wrote
+  # it to cache (not how far behind chain head). Suppressed for immutable
+  # functions and when we have no block_number to anchor on.
+  def freshness_tag_for(fn)
+    return nil unless @live_snapshot&.block_number
+    return nil unless fn.is_a?(Hash)
+
+    mutability = ChainReader::FieldMutability.classify(fn["name"])
+    return nil if mutability == :immutable
+
+    block_text = "Block ##{number_with_delimiter(@live_snapshot.block_number)}"
+    label =
+      if mutability == :fast && @live_snapshot.fetched_at
+        "as of #{block_text} · #{freshness_phrase(@live_snapshot.fetched_at)}"
+      else
+        "as of #{block_text}"
+      end
+
+    content_tag(:span, label, class: "text-xs opacity-50 font-mono ml-2",
+                title: "Read at chain block ##{@live_snapshot.block_number}; cached for up to 60s.")
+  end
+
+  # Block-anchored freshness header for protocol adapter panels (Uniswap V3,
+  # ERC-20). Reads block_number + fetched_at off the panel data hash. Returns
+  # nil if either is missing (older cached payload still in flight).
+  def panel_freshness_tag(data)
+    return nil unless data.is_a?(Hash)
+
+    block = data[:block_number]
+    return nil unless block
+
+    fetched = data[:fetched_at]
+    label =
+      if fetched
+        "as of Block ##{number_with_delimiter(block)} · #{freshness_phrase(fetched)}"
+      else
+        "as of Block ##{number_with_delimiter(block)}"
+      end
+
+    content_tag(:span, label, class: "text-xs opacity-60 font-mono",
+                title: "Read at chain block ##{block}; cached for up to 60s.")
+  end
+
+  # Compact "23s" / "4m" / "1h" formatter. Returns "now" for sub-second /
+  # missing input. Use freshness_phrase for the user-facing "23s ago" form.
+  def time_ago_short(time)
+    return "now" unless time
+    seconds = (Time.current - time).to_i
+    return "now" if seconds < 1
+    return "#{seconds}s" if seconds < 60
+    return "#{seconds / 60}m" if seconds < 3600
+    "#{seconds / 3600}h"
+  end
+
+  # User-facing phrase: "just now" when sub-second, "23s ago" / "4m ago" /
+  # "2h ago" otherwise. Avoids the awkward "now ago" rendering.
+  def freshness_phrase(time)
+    return "just now" unless time
+    seconds = (Time.current - time).to_i
+    return "just now" if seconds < 1
+    "#{time_ago_short(time)} ago"
+  end
+
   # User-facing block explorer base URL per supported chain. Used by
   # dual-link renderers that want the "↗ Etherscan" counterpart to an
   # on-smarts-md link. Returns nil for unknown chains.

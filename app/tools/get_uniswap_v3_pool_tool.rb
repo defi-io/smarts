@@ -37,6 +37,8 @@ class GetUniswapV3PoolTool < ApplicationTool
       tick: data[:tick],
       liquidity: data[:liquidity],
       tvl_usd: data[:tvl_usd],
+      block_number: data[:block_number],
+      fetched_at: data[:fetched_at]&.iso8601,
       tokens: {
         token0: data[:token0].slice(:symbol, :decimals, :address),
         token1: data[:token1].slice(:symbol, :decimals, :address)

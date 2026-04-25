@@ -6,6 +6,10 @@ _Could not read token state: <%= data[:error] %>_
 <% else %>
 ## Token state (<%= adapter.protocol_name %>)
 
+<% if data[:block_number] %>
+_Read at chain block #<%= data[:block_number] %><% if data[:fetched_at] %>, <%= freshness_phrase(data[:fetched_at]) %><% end %>._
+
+<% end %>
 - **Symbol:** <%= data[:symbol] %>
 <% if data[:name].present? && data[:name] != data[:symbol] %>
 - **Name:** <%= data[:name] %>

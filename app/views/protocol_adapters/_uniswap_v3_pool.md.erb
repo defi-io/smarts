@@ -6,6 +6,10 @@ _Could not read pool state: <%= data[:error] %>_
 <% else %>
 ## Pool state (<%= adapter.protocol_name %>)
 
+<% if data[:block_number] %>
+_Read at chain block #<%= data[:block_number] %><% if data[:fetched_at] %>, <%= freshness_phrase(data[:fetched_at]) %><% end %>._
+
+<% end %>
 - **Pair:** <%= data[:token0][:symbol] %> / <%= data[:token1][:symbol] %>
 - **Fee tier:** <%= data[:fee_pct] %>
 <% if data[:price_0_per_1] %>
