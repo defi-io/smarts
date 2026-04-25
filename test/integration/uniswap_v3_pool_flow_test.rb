@@ -45,7 +45,11 @@ class UniswapV3PoolFlowTest < ActionDispatch::IntegrationTest
     assert_match "USDC · 6 decimals", response.body
     assert_match "WETH · 18 decimals", response.body
     assert_match "198,819", response.body                 # current tick
-    assert_match "via DefiLlama prices", response.body
+    assert_match "via DefiLlama", response.body
+    assert_match "prices just now", response.body         # price freshness wired through (canned ts = now)
+    assert_match "Active liquidity", response.body
+    assert_match "3.10 × 10¹⁸", response.body             # liquidity humanized to scientific notation
+    assert_match "(spot, no slippage)", response.body
 
     # Adapter-provided display name flows all the way up to page-level
     # identity — H1, <title>, OG title, breadcrumb. Locks the fix for the
@@ -78,7 +82,7 @@ class UniswapV3PoolFlowTest < ActionDispatch::IntegrationTest
     assert_match "0.05%", response.body
     assert_match(/1 WETH ≈ 2,32[12]/, response.body)
     refute_match "TVL", response.body
-    refute_match "via DefiLlama prices", response.body
+    refute_match "via DefiLlama", response.body
   end
 
   private
@@ -119,9 +123,10 @@ class UniswapV3PoolFlowTest < ActionDispatch::IntegrationTest
   end
 
   def canned_prices
+    now_ts = Time.current.to_i
     {
-      USDC_ADDRESS => { "price" => 1.0,     "symbol" => "USDC", "decimals" => 6,  "confidence" => 0.99 },
-      WETH_ADDRESS => { "price" => 2322.29, "symbol" => "WETH", "decimals" => 18, "confidence" => 0.99 }
+      USDC_ADDRESS => { "price" => 1.0,     "symbol" => "USDC", "decimals" => 6,  "confidence" => 0.99, "timestamp" => now_ts },
+      WETH_ADDRESS => { "price" => 2322.29, "symbol" => "WETH", "decimals" => 18, "confidence" => 0.99, "timestamp" => now_ts }
     }
   end
 

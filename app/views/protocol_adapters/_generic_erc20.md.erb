@@ -19,7 +19,7 @@ _Read at chain block #<%= data[:block_number] %><% if data[:fetched_at] %>, <%= 
 - **Total supply:** <%= data[:total_supply_formatted] %> (raw: <%= number_with_delimiter(data[:total_supply_raw]) %>)
 <% end %>
 <% if data[:price_usd] %>
-- **Price:** $<%= number_with_delimiter(data[:price_usd].round(6)) %> (via DefiLlama)
+- **Price:** $<%= number_with_delimiter(data[:price_usd].round(6)) %> (via DefiLlama<% if data[:price_observed_at] %>, <%= freshness_phrase(data[:price_observed_at]) %><% end %>)
 <% end %>
 <% if data[:market_cap_usd] %>
 - **Market cap:** $<%= number_with_delimiter(data[:market_cap_usd].round(0)) %>

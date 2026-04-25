@@ -50,7 +50,12 @@
           <div>
             <div class="text-xs opacity-60 mb-1">Price</div>
             <div class="text-xl font-mono">$<%= number_with_delimiter(data[:price_usd].round(6)) %></div>
-            <div class="text-xs opacity-60 mt-1">via DefiLlama</div>
+            <div class="text-xs opacity-60 mt-1">
+              via DefiLlama
+              <% if data[:price_observed_at] %>
+                · <%= freshness_phrase(data[:price_observed_at]) %>
+              <% end %>
+            </div>
           </div>
         <% end %>
 

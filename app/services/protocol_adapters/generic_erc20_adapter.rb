@@ -135,7 +135,7 @@ module ProtocolAdapters
       token, admin, block_number = read_onchain_state
       return { error: "could not read token metadata" } if token[:symbol].blank? || token[:decimals].nil?
 
-      price = fetch_price
+      price, price_observed_at = fetch_price_with_timestamp
       market_cap = compute_market_cap(token[:total_supply], token[:decimals], price)
 
       {
@@ -145,6 +145,7 @@ module ProtocolAdapters
         total_supply_raw: token[:total_supply],
         total_supply_formatted: format_supply(token[:total_supply], token[:decimals], token[:symbol]),
         price_usd: price,
+        price_observed_at: price_observed_at,
         market_cap_usd: market_cap,
         issuer: lookup_issuer,
         admin_status: admin[:status],
@@ -224,12 +225,17 @@ module ProtocolAdapters
       }
     end
 
-    def fetch_price
+    # Returns [price_usd, observed_at_time] so the UI can show price freshness
+    # independently of the on-chain block. nil/nil if the lookup failed.
+    def fetch_price_with_timestamp
       prices = DefiLlamaClient.fetch_prices(chain: chain, addresses: [ contract.address ])
-      prices.dig(contract.address.downcase, "price")
+      entry = prices[contract.address.downcase] || {}
+      price = entry["price"]
+      ts    = entry["timestamp"]
+      [ price, ts ? Time.at(ts) : nil ]
     rescue DefiLlamaClient::Error => e
       Rails.logger.warn("[GenericErc20Adapter] price fetch failed: #{e.message}")
-      nil
+      [ nil, nil ]
     end
 
     def compute_market_cap(total_supply, decimals, price)

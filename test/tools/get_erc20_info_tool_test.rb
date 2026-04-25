@@ -120,6 +120,34 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
     end
   end
 
+  test "exposes price_observed_at as ISO-8601 when DefiLlama provides timestamp" do
+    seed_usdc_like_contract
+    price_ts = 1_700_000_000  # 2023-11-14 22:13:20 UTC
+    priced = ->(**_) { { "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => { "price" => 1.0, "timestamp" => price_ts } } }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20_with_admin) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, priced) do
+        result = @tool.call(chain: "eth", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+
+        assert_equal Time.at(price_ts).utc.iso8601, result[:price_observed_at],
+                     "AI agents need price freshness independent of on-chain block"
+      end
+    end
+  end
+
+  test "price_observed_at key is present (nil) when DefiLlama omitted timestamp" do
+    seed_usdc_like_contract
+    no_ts = ->(**_) { { "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => { "price" => 1.0 } } }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20_with_admin) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, no_ts) do
+        result = @tool.call(chain: "eth", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
+        assert result.key?(:price_observed_at)
+        assert_nil result[:price_observed_at]
+      end
+    end
+  end
+
   # If the on-chain multicall for metadata fails, panel_data returns
   # {error: "..."}. The tool must surface it rather than return partial data.
   test "surfaces panel_data errors from the adapter" do

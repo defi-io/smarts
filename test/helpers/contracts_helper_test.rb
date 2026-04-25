@@ -475,6 +475,42 @@ class ContractsHelperTest < ActionView::TestCase
     assert_nil panel_freshness_tag(nil)
   end
 
+  test "format_v3_liquidity renders huge uint128 as scientific notation with unicode superscript" do
+    assert_equal "3.10 × 10¹⁸", format_v3_liquidity(3_100_979_877_751_951_506)
+    assert_equal "1.00 × 10¹⁵", format_v3_liquidity(1_000_000_000_000_000)
+    assert_equal "1.50 × 10¹⁸", format_v3_liquidity(1_500_000_000_000_000_000)
+  end
+
+  test "format_v3_liquidity falls through to plain delimited form for small numbers" do
+    assert_equal "0", format_v3_liquidity(0)
+    assert_equal "9,999", format_v3_liquidity(9_999)
+    assert_equal "1,234", format_v3_liquidity(1_234)
+  end
+
+  test "format_v3_liquidity passes through non-integers as-is" do
+    assert_equal "n/a", format_v3_liquidity("n/a")
+    assert_equal "3.14", format_v3_liquidity(3.14)
+  end
+
+  test "round_sig_figs trims float to N significant digits" do
+    assert_equal 0.0004329, round_sig_figs(0.0004329112809858773, 4)
+    assert_equal 1235.0,    round_sig_figs(1234.5678, 4)  # 4th sig fig rounds 1234.5… up
+    assert_equal 0.001,     round_sig_figs(0.001, 4)
+    assert_equal 0,         round_sig_figs(0, 4)
+  end
+
+  test "round_sig_figs leaves non-numerics alone" do
+    assert_equal "abc", round_sig_figs("abc", 4)
+    assert_nil round_sig_figs(nil, 4)
+  end
+
+  test "to_superscript replaces digits with unicode superscript and preserves minus" do
+    assert_equal "⁰",   to_superscript(0)
+    assert_equal "¹⁸",  to_superscript(18)
+    assert_equal "⁻⁵",  to_superscript(-5)
+    assert_equal "²⁰²⁶", to_superscript(2026)
+  end
+
   test "time_ago_short formats seconds, minutes, hours and now" do
     assert_equal "now", time_ago_short(Time.current)
     assert_equal "23s", time_ago_short(23.seconds.ago)

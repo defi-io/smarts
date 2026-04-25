@@ -37,12 +37,13 @@ class GetErc20InfoTool < ApplicationTool
         formatted: data[:total_supply_formatted]
       },
       price_usd: data[:price_usd],
+      price_observed_at: data[:price_observed_at]&.utc&.iso8601,
       market_cap_usd: data[:market_cap_usd],
       issuer: data[:issuer],
       admin_status: data[:admin_status],
       admin_roles: data[:admin_roles],
       block_number: data[:block_number],
-      fetched_at: data[:fetched_at]&.iso8601
+      fetched_at: data[:fetched_at]&.utc&.iso8601
     }
   end
 end

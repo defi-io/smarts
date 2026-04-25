@@ -127,6 +127,34 @@ module ContractsHelper
     "#{time_ago_short(time)} ago"
   end
 
+  # Renders a Uniswap V3 raw `liquidity()` value (a uint128 sqrt-formula
+  # intermediate, not USD) as e.g. "3.27 × 10¹⁸" so it stops looking like
+  # "32 quintillion dollars" to the unsuspecting reader.
+  def format_v3_liquidity(n)
+    return n.to_s unless n.is_a?(Integer)
+    return number_with_delimiter(n) if n.zero? || n.abs < 10_000
+
+    exp = Math.log10(n.abs).floor
+    mantissa = n.to_f / (10.0**exp)
+    "#{format('%.2f', mantissa)} × 10#{to_superscript(exp)}"
+  end
+
+  # Rounds a float to N significant figures for human-readable display.
+  # Uses %g which already does this — wrap to lock the spec.
+  def round_sig_figs(n, sig = 4)
+    return n unless n.is_a?(Numeric)
+    return 0 if n.zero?
+    format("%.#{sig}g", n).to_f
+  end
+
+  SUPERSCRIPT_DIGITS = { "0" => "⁰", "1" => "¹", "2" => "²", "3" => "³", "4" => "⁴",
+                         "5" => "⁵", "6" => "⁶", "7" => "⁷", "8" => "⁸", "9" => "⁹",
+                         "-" => "⁻" }.freeze
+
+  def to_superscript(n)
+    n.to_s.each_char.map { |c| SUPERSCRIPT_DIGITS.fetch(c, c) }.join
+  end
+
   # User-facing block explorer base URL per supported chain. Used by
   # dual-link renderers that want the "↗ Etherscan" counterpart to an
   # on-smarts-md link. Returns nil for unknown chains.

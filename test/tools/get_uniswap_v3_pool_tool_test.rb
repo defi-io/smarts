@@ -54,6 +54,39 @@ class GetUniswapV3PoolToolTest < ActiveSupport::TestCase
     end
   end
 
+  test "exposes liquidity_note explaining V3 L is not USD depth" do
+    fake_adapter = FakeV3Adapter.new(canned_panel_data)
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_c) { fake_adapter }) do
+      result = @tool.call(chain: "eth", address: @contract.address)
+      assert result.key?(:liquidity_note),
+             "AI consumers will misread `liquidity` as USD without this note"
+      assert_match(/not a USD amount|not the depth/i, result[:liquidity_note])
+    end
+  end
+
+  test "exposes price_observed_at as ISO-8601 (TVL price may lag chain block)" do
+    panel = canned_panel_data.merge(price_observed_at: Time.utc(2026, 4, 25, 14, 28, 0))
+    fake_adapter = FakeV3Adapter.new(panel)
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_c) { fake_adapter }) do
+      result = @tool.call(chain: "eth", address: @contract.address)
+      assert_equal "2026-04-25T14:28:00Z", result[:price_observed_at],
+                   "AI agents must be able to see the TVL price's freshness independently"
+    end
+  end
+
+  test "price_observed_at key is present (nil) when DefiLlama omitted timestamp" do
+    fake_adapter = FakeV3Adapter.new(canned_panel_data)  # no price_observed_at
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_c) { fake_adapter }) do
+      result = @tool.call(chain: "eth", address: @contract.address)
+      assert result.key?(:price_observed_at),
+             "schema must be stable; nil-vs-missing matters for AI consumers"
+      assert_nil result[:price_observed_at]
+    end
+  end
+
   test "surfaces panel errors from the adapter" do
     fake_adapter = FakeV3Adapter.new({ error: "pool state unreadable" })
 

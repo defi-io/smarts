@@ -115,6 +115,10 @@ module ProtocolAdapters
         price_0_per_1: (price_1_per_0 && price_1_per_0 > 0) ? 1.0 / price_1_per_0 : nil,
         tvl_usd: tvl_usd,
         usd_prices: usd_prices,
+        # The oldest of the two token prices — TVL is only as fresh as the
+        # stalest input. Surface it so users see prices may lag the on-chain
+        # block they read everything else at.
+        price_observed_at: oldest_price_timestamp(usd_prices, pool[:token0], pool[:token1]),
         block_number: [ pool[:block_number], tokens[:block_number] ].compact.min,
         fetched_at: Time.current
       }
@@ -173,6 +177,16 @@ module ProtocolAdapters
     rescue DefiLlamaClient::Error => e
       Rails.logger.warn("[UniswapV3Adapter] price fetch failed: #{e.message}")
       {}
+    end
+
+    # Returns the oldest unix timestamp across the two token prices, or nil
+    # if either is missing. We surface the *oldest* so the UI doesn't claim
+    # freshness it doesn't have on the slower input.
+    def oldest_price_timestamp(prices, *addresses)
+      stamps = addresses.map { |a| prices.dig(a.downcase, "timestamp") }.compact
+      return nil if stamps.empty?
+
+      Time.at(stamps.min)
     end
 
     def compute_tvl(t0, t1, usd_prices, addr0, addr1)

@@ -13,13 +13,13 @@ _Read at chain block #<%= data[:block_number] %><% if data[:fetched_at] %>, <%= 
 - **Pair:** <%= data[:token0][:symbol] %> / <%= data[:token1][:symbol] %>
 - **Fee tier:** <%= data[:fee_pct] %>
 <% if data[:price_0_per_1] %>
-- **Price:** 1 <%= data[:token1][:symbol] %> ≈ <%= number_with_delimiter(data[:price_0_per_1].round(6)) %> <%= data[:token0][:symbol] %>
-- **Inverse price:** 1 <%= data[:token0][:symbol] %> = <%= data[:price_1_per_0] %> <%= data[:token1][:symbol] %>
+- **Price (spot, no slippage):** 1 <%= data[:token1][:symbol] %> ≈ <%= number_with_delimiter(data[:price_0_per_1].round(6)) %> <%= data[:token0][:symbol] %>
+- **Inverse price:** 1 <%= data[:token0][:symbol] %> ≈ <%= round_sig_figs(data[:price_1_per_0], 4) %> <%= data[:token1][:symbol] %>
 <% end %>
 - **Current tick:** <%= number_with_delimiter(data[:tick]) %>
-- **Active liquidity:** <%= number_with_delimiter(data[:liquidity]) %>
+- **Active liquidity (V3 L at current tick, not USD):** <%= format_v3_liquidity(data[:liquidity]) %> (raw: <%= number_with_delimiter(data[:liquidity]) %>)
 <% if data[:tvl_usd] %>
-- **TVL:** $<%= number_with_delimiter(data[:tvl_usd].round(0)) %> (via DefiLlama)
+- **TVL:** $<%= number_with_delimiter(data[:tvl_usd].round(0)) %> (via DefiLlama<% if data[:price_observed_at] %>, prices <%= freshness_phrase(data[:price_observed_at]) %><% end %>)
 <% end %>
 
 ### Tokens

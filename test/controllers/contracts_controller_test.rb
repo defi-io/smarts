@@ -568,6 +568,125 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
                  "decimals() is constructor-set; per-row freshness would be misleading")
   end
 
+  # ---------- price freshness rendering (TVL / Price provenance line) ----------
+
+  test "ERC-20 HTML page renders 'via DefiLlama · 4m ago' when price_observed_at is set" do
+    contract = contracts(:uni_token)
+    fake_adapter = ProtocolAdapters::GenericErc20Adapter.allocate
+    fake_adapter.instance_variable_set(:@contract, contract)
+    fake_adapter.instance_variable_set(:@chain, contract.chain)
+    fake_adapter.define_singleton_method(:panel_data) do
+      { symbol: "UNI", name: "Uniswap", decimals: 18,
+        total_supply_raw: 10**27, total_supply_formatted: "1,000,000,000 UNI",
+        price_usd: 6.5, price_observed_at: 4.minutes.ago - 1.second,
+        market_cap_usd: nil, issuer: nil, admin_status: [], admin_roles: [] }
+    end
+    fake_adapter.define_singleton_method(:template_partial) { "protocol_adapters/generic_erc20" }
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_) { fake_adapter }) do
+      get contract_path(chain: "eth", address: contract.address)
+    end
+
+    assert_response :success
+    assert_match(/via DefiLlama\s+·\s+4m ago/m, response.body,
+                 "users must see when the TVL/price input is older than the chain block they trust")
+  end
+
+  test "ERC-20 HTML page omits the freshness clause when price_observed_at is nil" do
+    contract = contracts(:uni_token)
+    fake_adapter = ProtocolAdapters::GenericErc20Adapter.allocate
+    fake_adapter.instance_variable_set(:@contract, contract)
+    fake_adapter.instance_variable_set(:@chain, contract.chain)
+    fake_adapter.define_singleton_method(:panel_data) do
+      { symbol: "UNI", name: "Uniswap", decimals: 18,
+        total_supply_raw: nil, total_supply_formatted: nil,
+        price_usd: 6.5, price_observed_at: nil,
+        market_cap_usd: nil, issuer: nil, admin_status: [], admin_roles: [] }
+    end
+    fake_adapter.define_singleton_method(:template_partial) { "protocol_adapters/generic_erc20" }
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_) { fake_adapter }) do
+      get contract_path(chain: "eth", address: contract.address)
+    end
+
+    assert_response :success
+    assert_match "via DefiLlama", response.body
+    refute_match(/via DefiLlama\s+·\s+(just now|\d+[smh] ago)/m, response.body,
+                 "must not render '· just now' for missing observed_at — that would lie about freshness")
+  end
+
+  test "V3 HTML page omits ' · prices …' when price_observed_at is nil" do
+    contract = contracts(:uni_token)
+    fake_adapter = ProtocolAdapters::UniswapV3Adapter.allocate
+    fake_adapter.instance_variable_set(:@contract, contract)
+    fake_adapter.instance_variable_set(:@chain, contract.chain)
+    fake_adapter.define_singleton_method(:panel_data) do
+      { token0: { symbol: "USDC", decimals: 6, address: "0xa" },
+        token1: { symbol: "WETH", decimals: 18, address: "0xb" },
+        fee_pct: "0.05%", price_1_per_0: 0.00043, price_0_per_1: 2300.0,
+        tick: 198_000, liquidity: 1_000_000_000_000_000_000,
+        tvl_usd: 100_000_000, price_observed_at: nil,
+        block_number: 19_000_000, fetched_at: Time.current }
+    end
+    fake_adapter.define_singleton_method(:template_partial) { "protocol_adapters/uniswap_v3_pool" }
+    fake_adapter.define_singleton_method(:protocol_name) { "Uniswap V3" }
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_) { fake_adapter }) do
+      get contract_path(chain: "eth", address: contract.address)
+    end
+
+    assert_response :success
+    assert_match "via DefiLlama", response.body
+    refute_match(/prices\s+(just now|\d+[smh] ago)/, response.body)
+  end
+
+  test "V3 .md page surfaces 'prices Xs ago' when price_observed_at is set" do
+    contract = contracts(:uni_token)
+    fake_adapter = ProtocolAdapters::UniswapV3Adapter.allocate
+    fake_adapter.instance_variable_set(:@contract, contract)
+    fake_adapter.instance_variable_set(:@chain, contract.chain)
+    fake_adapter.define_singleton_method(:panel_data) do
+      { token0: { symbol: "USDC", decimals: 6,  address: "0xa0b8" },
+        token1: { symbol: "WETH", decimals: 18, address: "0xc02a" },
+        fee_pct: "0.05%", price_1_per_0: 0.00043, price_0_per_1: 2334.30,
+        tick: 198_765, liquidity: 1_500_000_000_000_000_000,
+        tvl_usd: 100_000_000,
+        price_observed_at: 30.seconds.ago,
+        block_number: 19_000_000, fetched_at: Time.current }
+    end
+    fake_adapter.define_singleton_method(:template_partial) { "protocol_adapters/uniswap_v3_pool" }
+    fake_adapter.define_singleton_method(:protocol_name) { "Uniswap V3" }
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_) { fake_adapter }) do
+      get "/eth/#{contract.address}.md"
+    end
+
+    assert_response :success
+    assert_match "## Pool state", response.body
+    assert_match(/TVL:.*via DefiLlama, prices \d+s ago/, response.body)
+  end
+
+  test "ERC-20 .md page surfaces 'X ago' on Price line when price_observed_at is set" do
+    contract = contracts(:uni_token)
+    fake_adapter = ProtocolAdapters::GenericErc20Adapter.allocate
+    fake_adapter.instance_variable_set(:@contract, contract)
+    fake_adapter.instance_variable_set(:@chain, contract.chain)
+    fake_adapter.define_singleton_method(:panel_data) do
+      { symbol: "UNI", name: "Uniswap", decimals: 18,
+        total_supply_raw: nil, total_supply_formatted: nil,
+        price_usd: 6.5, price_observed_at: 90.seconds.ago,
+        market_cap_usd: nil, issuer: nil, admin_status: [], admin_roles: [] }
+    end
+    fake_adapter.define_singleton_method(:template_partial) { "protocol_adapters/generic_erc20" }
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, ->(_) { fake_adapter }) do
+      get "/eth/#{contract.address}.md"
+    end
+
+    assert_response :success
+    assert_match(/^- \*\*Price:\*\* \$6\.5.*via DefiLlama, 1m ago/, response.body)
+  end
+
   test "show falls back gracefully when ViewCaller returns nil block_number" do
     contract = contracts(:uni_token)
     snapshot = ChainReader::ViewCaller::Snapshot.new(

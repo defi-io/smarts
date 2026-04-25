@@ -227,6 +227,92 @@ class ProtocolAdapters::UniswapV3AdapterTest < ActiveSupport::TestCase
 
   # ---------- block-anchored freshness ----------
 
+  test "panel_data surfaces price_observed_at as the OLDEST of the two token timestamps" do
+    adapter = ProtocolAdapters::UniswapV3Adapter.new(@contract)
+
+    multicall_stub = lambda do |chain:, calls:|
+      if calls.first.function["name"] == "token0"
+        ChainReader::Multicall3Client::Batch.new(
+          block_number: 19_000_000,
+          results: [
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 500 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 1_000 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ [ 2**96, 0, 0, 0, 0, 0, false ] ])
+          ]
+        )
+      else
+        ChainReader::Multicall3Client::Batch.new(
+          block_number: 19_000_000,
+          results: [
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 6 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 1_000_000 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "WETH" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 18 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 10**18 ])
+          ]
+        )
+      end
+    end
+
+    older_ts = 1_700_000_000
+    newer_ts = 1_700_000_120  # 2 minutes later
+    prices = {
+      "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => { "price" => 1.0,    "timestamp" => newer_ts },
+      "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" => { "price" => 2300.0, "timestamp" => older_ts }
+    }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, multicall_stub) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, ->(**_) { prices }) do
+        data = adapter.panel_data
+        assert_equal Time.at(older_ts), data[:price_observed_at],
+                     "must surface the OLDER price timestamp; UI must not claim freshness it doesn't have"
+      end
+    end
+  end
+
+  test "panel_data price_observed_at is nil when DefiLlama omits timestamps" do
+    adapter = ProtocolAdapters::UniswapV3Adapter.new(@contract)
+
+    multicall_stub = lambda do |chain:, calls:|
+      if calls.first.function["name"] == "token0"
+        ChainReader::Multicall3Client::Batch.new(
+          block_number: 19_000_000,
+          results: [
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "0xa" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "0xb" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 500 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 1_000 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ [ 2**96, 0, 0, 0, 0, 0, false ] ])
+          ]
+        )
+      else
+        ChainReader::Multicall3Client::Batch.new(
+          block_number: 19_000_000,
+          results: [
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "A" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 18 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 0 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ "B" ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 18 ]),
+            ChainReader::Multicall3Client::Result.new(success: true, values: [ 0 ])
+          ]
+        )
+      end
+    end
+    # No timestamp keys
+    no_ts_prices = ->(**_) { { "0xa" => { "price" => 1.0 }, "0xb" => { "price" => 2.0 } } }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, multicall_stub) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, no_ts_prices) do
+        data = adapter.panel_data
+        assert_nil data[:price_observed_at], "missing timestamps must yield nil, not crash"
+      end
+    end
+  end
+
   test "panel_data records block_number = min of pool_state and tokens batches" do
     adapter = ProtocolAdapters::UniswapV3Adapter.new(@contract)
 

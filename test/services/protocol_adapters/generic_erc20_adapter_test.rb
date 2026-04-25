@@ -106,6 +106,8 @@ class ProtocolAdapters::GenericErc20AdapterTest < ActiveSupport::TestCase
       stub_class_method(DefiLlamaClient, :fetch_prices, down) do
         data = adapter.panel_data
         assert_nil data[:price_usd]
+        assert_nil data[:price_observed_at],
+                   "no price means no price_observed_at — view must not render '· just now' for absent data"
         assert_nil data[:market_cap_usd]
         assert_equal "1,000,000 USDC", data[:total_supply_formatted]
       end
@@ -405,6 +407,49 @@ class ProtocolAdapters::GenericErc20AdapterTest < ActiveSupport::TestCase
   end
 
   # ---------- block-anchored freshness ----------
+
+  test "panel_data surfaces price_observed_at from DefiLlama timestamp" do
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(@contract)
+
+    stub = lambda do |chain:, calls:|
+      [
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 6 ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 10**15 ])
+      ]
+    end
+    price_ts = 1_700_000_000
+    priced = ->(**_) { { @contract.address.downcase => { "price" => 1.0, "timestamp" => price_ts } } }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, stub) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, priced) do
+        data = adapter.panel_data
+        assert_equal Time.at(price_ts), data[:price_observed_at]
+      end
+    end
+  end
+
+  test "panel_data price_observed_at is nil when price entry has no timestamp" do
+    adapter = ProtocolAdapters::GenericErc20Adapter.new(@contract)
+    stub = lambda do |chain:, calls:|
+      [
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 6 ]),
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 10**15 ])
+      ]
+    end
+    no_ts = ->(**_) { { @contract.address.downcase => { "price" => 1.0 } } }
+
+    stub_class_method(ChainReader::Multicall3Client, :call, stub) do
+      stub_class_method(DefiLlamaClient, :fetch_prices, no_ts) do
+        data = adapter.panel_data
+        assert_equal 1.0, data[:price_usd]
+        assert_nil data[:price_observed_at]
+      end
+    end
+  end
 
   test "panel_data records block_number and fetched_at from the multicall batch" do
     adapter = ProtocolAdapters::GenericErc20Adapter.new(@contract)
