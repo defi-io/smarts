@@ -36,9 +36,11 @@ class GetUniswapV3PoolTool < ApplicationTool
       },
       tick: data[:tick],
       liquidity: data[:liquidity],
+      liquidity_note: "Uniswap V3 sqrt-formula virtual liquidity at the current tick. Not a USD amount and not the depth available to swap.",
       tvl_usd: data[:tvl_usd],
       block_number: data[:block_number],
-      fetched_at: data[:fetched_at]&.iso8601,
+      fetched_at: data[:fetched_at]&.utc&.iso8601,
+      price_observed_at: data[:price_observed_at]&.utc&.iso8601,
       tokens: {
         token0: data[:token0].slice(:symbol, :decimals, :address),
         token1: data[:token1].slice(:symbol, :decimals, :address)

@@ -23,12 +23,12 @@
       <% if data[:price_0_per_1] %>
         <div class="mt-6 flex flex-wrap gap-8">
           <div>
-            <div class="text-xs opacity-60 mb-1">Price</div>
+            <div class="text-xs opacity-60 mb-1">Price <span class="opacity-70">(spot, no slippage)</span></div>
             <div class="text-xl font-mono">
               1 <%= data[:token1][:symbol] %> ≈ <%= number_with_delimiter(data[:price_0_per_1].round(6)) %> <%= data[:token0][:symbol] %>
             </div>
             <div class="text-xs opacity-60 mt-1 font-mono">
-              1 <%= data[:token0][:symbol] %> = <%= data[:price_1_per_0] %> <%= data[:token1][:symbol] %>
+              1 <%= data[:token0][:symbol] %> ≈ <%= round_sig_figs(data[:price_1_per_0], 4) %> <%= data[:token1][:symbol] %>
             </div>
           </div>
 
@@ -38,15 +38,27 @@
           </div>
 
           <div>
-            <div class="text-xs opacity-60 mb-1">Active liquidity</div>
-            <div class="text-xl font-mono"><%= number_with_delimiter(data[:liquidity]) %></div>
+            <div class="text-xs opacity-60 mb-1"
+                 title="Uniswap V3 internal sqrt-formula liquidity at the current tick. Not a USD amount and not the depth you can swap against.">
+              Active liquidity <span class="opacity-70">(V3 L)</span>
+            </div>
+            <div class="text-xl font-mono"
+                 title="<%= number_with_delimiter(data[:liquidity]) %>">
+              <%= format_v3_liquidity(data[:liquidity]) %>
+            </div>
+            <div class="text-xs opacity-60 mt-1">at tick <%= number_with_delimiter(data[:tick]) %> · not USD</div>
           </div>
 
           <% if data[:tvl_usd] %>
             <div>
               <div class="text-xs opacity-60 mb-1">TVL</div>
               <div class="text-xl font-mono">$<%= number_with_delimiter(data[:tvl_usd].round(0)) %></div>
-              <div class="text-xs opacity-60 mt-1">via DefiLlama prices</div>
+              <div class="text-xs opacity-60 mt-1">
+                via DefiLlama
+                <% if data[:price_observed_at] %>
+                  · prices <%= freshness_phrase(data[:price_observed_at]) %>
+                <% end %>
+              </div>
             </div>
           <% end %>
         </div>
