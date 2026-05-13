@@ -21,6 +21,7 @@ Rails.application.routes.draw do
     instructions: "Live docs for verified smart contracts on Ethereum, Base, Arbitrum, Optimism, and Polygon. Use these tools to read on-chain state, ERC-20 token info, Uniswap V3 pool state, and to classify any address.",
     tools: [
       GetContractInfoTool,
+      GetContractSourceTool,
       GetErc20InfoTool,
       GetUniswapV3PoolTool,
       InspectAddressTool,

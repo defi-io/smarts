@@ -53,6 +53,7 @@ class MarketingController < ApplicationController
   # Tools exposed over MCP. Kept in sync with app/tools/*.
   MCP_TOOLS = [
     { name: "get_contract_info",    blurb: "Metadata about a verified contract: name, classification, adapter, function counts." },
+    { name: "get_contract_source",  blurb: "Fetch the verified Solidity source: file index, single-file content, or substring grep across files." },
     { name: "get_erc20_info",       blurb: "Live token state: formatted supply, price, market cap, issuer, admin controls (paused/owner/minter/…)." },
     { name: "get_uniswap_v3_pool",  blurb: "Live pool state: token pair, fee, both-direction price, liquidity, tick, TVL." },
     { name: "inspect_address",      blurb: "Classifies any address as EOA / contract / EIP-7702 wallet, plus balance, nonce, and reverse ENS." },
@@ -65,6 +66,7 @@ class MarketingController < ApplicationController
     { q: "Who is 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045?",  tool: "inspect_address" },
     { q: "Get the total supply of USDT on Arbitrum.",           tool: "get_erc20_info" },
     { q: "Who can blacklist my USDC balance?",                  tool: "get_erc20_info" },
+    { q: "Show me where USDC's blacklisting logic lives in source.", tool: "get_contract_source" },
     { q: "Call balanceOf(0xabc…) on USDC.",                     tool: "read_contract_state" }
   ].freeze
 
