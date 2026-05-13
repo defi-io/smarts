@@ -53,7 +53,7 @@ gem "eth", "~> 0.5.17"
 gem "rouge", "~> 4.7"
 
 # AI doc generation via Claude
-gem "ruby_llm", "~> 1.14"
+gem "ruby_llm", "~> 1.15"
 
 # MCP server for AI-agent access to contract docs
 # Official Anthropic Ruby SDK — supports Streamable HTTP transport
