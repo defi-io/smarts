@@ -21,10 +21,18 @@ RUN apt-get update -qq && \
     rm -rf /var/lib/apt/lists /var/cache/apt/archives
 
 # Set production environment variables and enable jemalloc for reduced memory usage and latency.
+#
+# BUNDLE_JOBS=1 serializes gem installation. Bundler's default parallel install
+# races on gems with native extensions whose Rakefile loads other gems'
+# specs at compile time — concretely, scrypt's native build requires
+# ffi-compiler whose gemspec requires ffi, but parallel install can compile
+# scrypt before ffi has registered in the gem index, raising
+# Gem::MissingSpecError on a fresh Docker build.
 ENV RAILS_ENV="production" \
     BUNDLE_DEPLOYMENT="1" \
     BUNDLE_PATH="/usr/local/bundle" \
     BUNDLE_WITHOUT="development" \
+    BUNDLE_JOBS="1" \
     LD_PRELOAD="/usr/local/lib/libjemalloc.so"
 
 # Throw-away build stage to reduce size of final image
