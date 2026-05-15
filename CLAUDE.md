@@ -271,13 +271,14 @@ smarts/
 │   │   └── warmup_cache_job.rb              # 预热 Top 50 缓存
 │   │
 │   ├── tools/                               # MCP tools（mcp gem 风格）
-│   │   ├── tools/
-│   │   │   ├── get_contract_info.rb
-│   │   │   ├── read_contract_state.rb
-│   │   │   ├── simulate_transaction.rb
-│   │   │   ├── get_protocol_metrics.rb
-│   │   │   └── get_recent_events.rb
-│   │   └── resources/
+│   │   ├── application_tool.rb              # 基类（slug/chain+address 解析、Hash → MCP::Tool::Response）
+│   │   ├── get_contract_info_tool.rb        # 合约元数据
+│   │   ├── get_contract_source_tool.rb      # 源码索引/取文件/grep
+│   │   ├── get_erc20_info_tool.rb           # ERC-20 实时元数据
+│   │   ├── get_recent_events_tool.rb        # 合约近期事件（按 ABI 解码）
+│   │   ├── get_uniswap_v3_pool_tool.rb      # Uniswap V3 池实时状态
+│   │   ├── inspect_address_tool.rb          # 任意地址分类（EOA / contract / EIP-7702）
+│   │   └── read_contract_state_tool.rb      # 通用 view 函数读取
 │   │
 │   ├── views/
 │   │   ├── contracts/
