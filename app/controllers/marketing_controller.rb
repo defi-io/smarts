@@ -55,6 +55,7 @@ class MarketingController < ApplicationController
     { name: "get_contract_info",    blurb: "Metadata about a verified contract: name, classification, adapter, function counts." },
     { name: "get_contract_source",  blurb: "Fetch the verified Solidity source: file index, single-file content, or substring grep across files." },
     { name: "get_erc20_info",       blurb: "Live token state: formatted supply, price, market cap, issuer, admin controls (paused/owner/minter/…)." },
+    { name: "get_recent_events",    blurb: "Most recent events emitted by a contract, decoded against its ABI. Filter by event name; unknown topics return raw." },
     { name: "get_uniswap_v3_pool",  blurb: "Live pool state: token pair, fee, both-direction price, liquidity, tick, TVL." },
     { name: "inspect_address",      blurb: "Classifies any address as EOA / contract / EIP-7702 wallet, plus balance, nonce, and reverse ENS." },
     { name: "read_contract_state",  blurb: "Read any view/pure function by name, with positional args. Returns decoded output." }
@@ -67,6 +68,7 @@ class MarketingController < ApplicationController
     { q: "Get the total supply of USDT on Arbitrum.",           tool: "get_erc20_info" },
     { q: "Who can blacklist my USDC balance?",                  tool: "get_erc20_info" },
     { q: "Show me where USDC's blacklisting logic lives in source.", tool: "get_contract_source" },
+    { q: "Show me the last 10 swaps on the USDC/WETH 0.05% pool.", tool: "get_recent_events" },
     { q: "Call balanceOf(0xabc…) on USDC.",                     tool: "read_contract_state" }
   ].freeze
 

@@ -4,6 +4,12 @@ class EtherscanClientTest < ActiveSupport::TestCase
   setup do
     @chain = chains(:ethereum)
     @client = EtherscanClient.new(@chain)
+    @original_cache = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+  end
+
+  teardown do
+    Rails.cache = @original_cache
   end
 
   test "raises NotVerifiedError for unverified contract" do
@@ -51,6 +57,77 @@ class EtherscanClientTest < ActiveSupport::TestCase
     info = @client.fetch_contract_info("0x1f9840a85d5af5bf1d1762f925bdaddc4201f984")
 
     assert_nil info[:implementation_address]
+  end
+
+  # ──────────────────────────────────────────────
+  # get_logs (Etherscan V2 logs/getLogs wrapper)
+  # ──────────────────────────────────────────────
+
+  test "get_logs returns the parsed result array on success" do
+    log = { "address" => "0x" + "1" * 40, "topics" => [ "0x" + "a" * 64 ], "data" => "0x" }
+    stub_logs_response(status: "1", message: "OK", result: [ log ])
+
+    result = @client.get_logs(address: "0x" + "1" * 40, from_block: 1, to_block: 100)
+
+    assert_equal [ log ], result
+  end
+
+  test "get_logs returns [] (not error) when Etherscan reports no records" do
+    stub_logs_response(status: "0", message: "No records found", result: [])
+
+    result = @client.get_logs(address: "0x" + "1" * 40, from_block: 1, to_block: 100)
+
+    assert_equal [], result, "empty result is normal — must not raise"
+  end
+
+  test "get_logs raises Error on non-records-found failures (e.g. bad API key)" do
+    stub_logs_response(status: "0", message: "NOTOK", result: "Invalid API Key")
+
+    assert_raises(EtherscanClient::Error) do
+      @client.get_logs(address: "0x" + "1" * 40, from_block: 1, to_block: 100)
+    end
+  end
+
+  test "get_logs forwards topic0 as a query parameter when given" do
+    seen_query = nil
+    stub_request(:get, /api\.etherscan\.io/).to_return do |req|
+      seen_query = req.uri.query
+      { status: 200, body: empty_logs_body, headers: { "Content-Type" => "application/json" } }
+    end
+
+    @client.get_logs(address: "0xabc", from_block: 1, to_block: 100, topic0: "0x" + "1" * 64)
+
+    assert_includes seen_query, "topic0=0x#{'1' * 64}"
+  end
+
+  test "get_logs omits topic0 when not given" do
+    seen_query = nil
+    stub_request(:get, /api\.etherscan\.io/).to_return do |req|
+      seen_query = req.uri.query
+      { status: 200, body: empty_logs_body, headers: { "Content-Type" => "application/json" } }
+    end
+
+    @client.get_logs(address: "0xabc", from_block: 1, to_block: 100)
+
+    refute_includes seen_query.to_s, "topic0=", "absent topic0 must not become an empty query param"
+  end
+
+  test "get_logs caches by full param tuple and skips HTTP on hit" do
+    stub = stub_logs_response(status: "1", message: "OK", result: [])
+
+    @client.get_logs(address: "0xabc", from_block: 1, to_block: 100)
+    @client.get_logs(address: "0xabc", from_block: 1, to_block: 100)
+
+    assert_requested stub, times: 1, times_msg: "second identical call must be served from Solid Cache"
+  end
+
+  test "get_logs cache key separates different addresses" do
+    stub = stub_logs_response(status: "1", message: "OK", result: [])
+
+    @client.get_logs(address: "0xaaa", from_block: 1, to_block: 100)
+    @client.get_logs(address: "0xbbb", from_block: 1, to_block: 100)
+
+    assert_requested stub, times: 2, times_msg: "different addresses must miss the cache independently"
   end
 
   test "fetch_contract_info resolves proxy to implementation" do
@@ -151,5 +228,16 @@ class EtherscanClientTest < ActiveSupport::TestCase
     stub_request(:get, /api\.etherscan\.io.*getabi/)
       .with(query: hash_including(address: address))
       .to_return(status: 200, body: body.to_json, headers: { "Content-Type" => "application/json" })
+  end
+
+  def stub_logs_response(status:, message:, result:)
+    body = { "status" => status, "message" => message, "result" => result }
+    stub_request(:get, /api\.etherscan\.io.*getLogs/i).to_return(
+      status: 200, body: body.to_json, headers: { "Content-Type" => "application/json" }
+    )
+  end
+
+  def empty_logs_body
+    { "status" => "0", "message" => "No records found", "result" => [] }.to_json
   end
 end
