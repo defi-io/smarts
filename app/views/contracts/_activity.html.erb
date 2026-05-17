@@ -1,0 +1,105 @@
+<% reference = @canonical_slug || "#{@chain.slug}/#{@contract.address}" %>
+<% prompt = activity_prompt(reference) %>
+<% filters = activity_filter_events(@contract) %>
+
+<%= turbo_frame_tag "contract_activity", data: { turbo_action: "advance" } do %>
+<section class="mb-2">
+  <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
+    <div>
+      <h2 class="text-2xl font-semibold">Live Activity</h2>
+      <p class="text-sm opacity-70 mt-1">Recent contract events decoded from the verified ABI, newest first.</p>
+    </div>
+
+    <% if @activity&.success? && @activity.latest_block %>
+      <span class="text-xs opacity-60 font-mono"
+            title="Logs fetched from block #<%= @activity.from_block %> through #<%= @activity.latest_block %>; cached by EtherscanClient for up to 60s.">
+        Blocks #<%= number_with_delimiter(@activity.from_block) %>–#<%= number_with_delimiter(@activity.latest_block) %>
+      </span>
+    <% end %>
+  </div>
+
+  <div class="card bg-base-200 border border-base-300 mb-5">
+    <div class="card-body py-4">
+      <div class="text-sm font-semibold mb-2">Ask your AI to analyze this activity</div>
+      <div class="flex items-start gap-2 flex-wrap">
+        <span class="text-sm italic flex-1 min-w-0 break-words">“<%= prompt %>”</span>
+        <button type="button"
+                data-controller="copy"
+                data-copy-text-value="<%= prompt %>"
+                data-action="click->copy#write"
+                class="text-xs px-2 py-1 bg-base-300 hover:bg-base-100 rounded transition-colors"
+                title="Copy prompt">Copy prompt</button>
+      </div>
+      <p class="text-xs opacity-60 mt-2">Use this with the Smarts MCP endpoint at <code>https://smarts.md/mcp</code>.</p>
+    </div>
+  </div>
+
+  <% if filters.any? %>
+    <div class="flex items-center gap-2 flex-wrap mb-5">
+      <span class="text-xs opacity-60">Filter:</span>
+      <%= link_to "All", activity_filter_path(nil), class: "btn btn-xs #{@activity&.event_filter.blank? ? 'btn-primary' : 'btn-ghost'}", data: { turbo_frame: "contract_activity", turbo_action: "advance" } %>
+      <% filters.each do |name| %>
+        <%= link_to name, activity_filter_path(name), class: "btn btn-xs #{@activity&.event_filter == name ? 'btn-primary' : 'btn-ghost'}", data: { turbo_frame: "contract_activity", turbo_action: "advance" } %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @activity&.error.present? %>
+    <div class="alert alert-warning">
+      <span>Could not load recent activity: <%= @activity.error %></span>
+    </div>
+  <% elsif @activity&.events.blank? %>
+    <div class="alert">
+      <span>No recent events found in the current block window.</span>
+    </div>
+  <% else %>
+    <div class="space-y-3">
+      <% @activity.events.each do |event| %>
+        <div class="card bg-base-200 border border-base-300">
+          <div class="card-body py-4">
+            <div class="flex items-start justify-between gap-3 flex-wrap">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="badge <%= event.unknown? ? 'badge-warning' : 'badge-primary' %>"><%= event.event %></span>
+                  <% if (summary = activity_event_summary(event)) %>
+                    <span class="text-sm opacity-80"><%= summary %></span>
+                  <% end %>
+                </div>
+                <div class="text-xs opacity-60 font-mono mt-2 break-all">
+                  Block #<%= number_with_delimiter(event.block_number) || "—" %>
+                  <% if event.timestamp %> · <%= event.timestamp %><% end %>
+                  <% if event.tx_hash.present? %>
+                    · tx
+                    <% if (tx_url = explorer_tx_url(@chain, event.tx_hash)) %>
+                      <%= link_to truncate_address(event.tx_hash) || event.tx_hash, tx_url, target: "_blank", rel: "noopener", class: "underline hover:text-primary" %>
+                    <% else %>
+                      <%= truncate_address(event.tx_hash) || event.tx_hash %>
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+              <span class="text-xs opacity-50 font-mono">log #<%= event.log_index || "—" %></span>
+            </div>
+
+            <% if event.unknown? %>
+              <dl class="grid grid-cols-1 md:grid-cols-[9rem_1fr] gap-x-4 gap-y-2 mt-4 text-sm">
+                <dt class="opacity-60 font-mono">topic0</dt>
+                <dd class="font-mono break-all"><%= event.topic0 || "—" %></dd>
+                <dt class="opacity-60 font-mono">raw_data</dt>
+                <dd class="font-mono break-all"><%= event.raw_data || "—" %></dd>
+              </dl>
+            <% elsif event.args.present? %>
+              <dl class="grid grid-cols-1 md:grid-cols-[9rem_1fr] gap-x-4 gap-y-2 mt-4 text-sm">
+                <% event.args.each do |key, value| %>
+                  <dt class="opacity-60 font-mono"><%= key.presence || "arg" %></dt>
+                  <dd class="font-mono break-all"><%= format_activity_arg(value) %></dd>
+                <% end %>
+              </dl>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</section>
+<% end %>
