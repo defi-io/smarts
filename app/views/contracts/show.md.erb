@@ -34,6 +34,35 @@ Setup for Claude Code, Cursor, Windsurf, Cline: <https://mcp.smarts.md/>
 <%= render @protocol_adapter.template_partial, adapter: @protocol_adapter %>
 <% end %>
 
+## Recent activity
+
+<% if @activity&.error.present? %>
+Could not load recent activity: <%= @activity.error %>
+<% elsif @activity&.events.present? %>
+Decoded from the verified ABI, newest first.
+<% if @activity.event_filter.present? %>
+Filter: `<%= @activity.event_filter %>`
+<% end %>
+<% if @activity.latest_block %>
+Window: blocks `<%= @activity.from_block %>` → `<%= @activity.latest_block %>`
+<% end %>
+
+<% @activity.events.first(10).each do |event| %>
+- **<%= event.event %>** at block `<%= event.block_number || "unknown" %>`<% if event.tx_hash.present? %>, tx `<%= event.tx_hash %>`<% end %><% if (summary = activity_event_summary(event)) %> — <%= summary %><% end %>
+<% if event.unknown? %>
+  - topic0: `<%= event.topic0 || "unknown" %>`
+<% elsif event.args.present? %>
+<% event.args.each do |key, value| %>
+  - <%= key.presence || "arg" %>: `<%= format_activity_arg(value) %>`
+<% end %>
+<% end %>
+<% end %>
+
+Ask your AI agent: "<%= activity_prompt(reference) %>"
+<% else %>
+No recent events found in the current block window.
+<% end %>
+
 ## Links
 
 - Docs: <<%= canonical %>>

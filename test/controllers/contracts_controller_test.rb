@@ -925,7 +925,127 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h1", contract.name
   end
 
+  test "show renders Live Activity tab with decoded recent events and AI prompt" do
+    contract = contracts(:uni_token)
+    activity = activity_result(contract, events: [ activity_event("Transfer", {
+      "from" => "0x" + "a" * 40,
+      "to" => "0x" + "b" * 40,
+      "amount" => 1_000
+    }) ])
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    assert_response :success
+    assert_match "Live Activity", response.body
+    assert_match "Recent contract events decoded from the verified ABI", response.body
+    assert_match "Transfer", response.body
+    assert_match "0xaaaa…aaaa → 0xbbbb…bbbb", response.body
+    assert_match "Ask your AI to analyze this activity", response.body
+    assert_match "Analyze recent events for eth/#{contract.address}", response.body
+  end
+
+  test "show passes event_name query param into recent activity fetcher" do
+    contract = contracts(:uni_token)
+    seen_event_name = nil
+    activity = activity_result(contract, event_filter: "Transfer")
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**kwargs) {
+        seen_event_name = kwargs[:event_name]
+        activity
+      }) do
+        get contract_path(chain: "eth", address: contract.address), params: { event_name: "Transfer" }
+      end
+    end
+
+    assert_response :success
+    assert_equal "Transfer", seen_event_name
+    assert_match "btn-primary", response.body
+    assert_match 'aria-label="Live Activity" data-contract-tabs-target="activity" checked', response.body
+    assert_no_match 'aria-label="Docs" checked', response.body
+  end
+
+  test "activity filters target the Turbo Frame instead of full-page tab reloads" do
+    contract = contracts(:uni_token)
+    activity = activity_result(contract)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    assert_response :success
+    assert_match 'data-controller="contract-tabs"', response.body
+    assert_match '<turbo-frame data-turbo-action="advance" id="contract_activity">', response.body
+    assert_match 'data-turbo-frame="contract_activity"', response.body
+    assert_match 'href="/eth/0x1111111111111111111111111111111111111111?event_name=Transfer"', response.body
+  end
+
+  test "contract page .md includes recent activity section and analysis prompt" do
+    contract = contracts(:uni_token)
+    activity = activity_result(contract, events: [ activity_event("Transfer", {
+      "from" => "0x" + "a" * 40,
+      "to" => "0x" + "b" * 40,
+      "amount" => 1_000
+    }) ])
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity }) do
+        get "/eth/#{contract.address}.md"
+      end
+    end
+
+    assert_response :success
+    assert_match "## Recent activity", response.body
+    assert_match "**Transfer**", response.body
+    assert_match "Ask your AI agent", response.body
+  end
+
+  test "show tolerates recent activity failure and still renders page" do
+    contract = contracts(:uni_token)
+    activity = activity_result(contract, error: "Etherscan: down")
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    assert_response :success
+    assert_select "h1", contract.name
+    assert_match "Could not load recent activity", response.body
+  end
+
   private
+
+  def activity_result(contract, events: [], event_filter: nil, error: nil)
+    ContractEvents::RecentFetcher::Result.new(
+      contract: contract.address,
+      chain: contract.chain.slug,
+      event_filter: event_filter,
+      latest_block: 25_000_000,
+      from_block: 24_995_000,
+      count: events.length,
+      events: events,
+      error: error
+    )
+  end
+
+  def activity_event(name, args)
+    ContractEvents::RecentFetcher::Event.new(
+      event: name,
+      args: args,
+      block_number: 25_000_000,
+      tx_hash: "0x" + "d" * 64,
+      log_index: 0,
+      timestamp: "2026-05-16T12:00:00Z"
+    )
+  end
 
   def erc20_like_abi
     %w[totalSupply balanceOf(address) transfer(address,uint256)

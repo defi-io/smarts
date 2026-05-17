@@ -173,6 +173,13 @@ module ContractsHelper
     "#{base}/address/#{address}"
   end
 
+  def explorer_tx_url(chain, tx_hash)
+    base = EXPLORER_BASE_URLS[chain.slug]
+    return nil unless base && tx_hash.present?
+
+    "#{base}/tx/#{tx_hash}"
+  end
+
   def explorer_name(chain)
     case chain.slug
     when "eth"      then "Etherscan"
@@ -261,6 +268,82 @@ module ContractsHelper
     "#{fn['name']}(#{parts.join(', ')})"
   end
 
+  COMMON_ACTIVITY_EVENTS = %w[Transfer Approval Swap Mint Burn Collect Sync].freeze
+
+  def activity_filter_events(contract)
+    names = contract.events.map { |event| event["name"] }.compact.uniq
+    common = COMMON_ACTIVITY_EVENTS.select { |name| names.include?(name) }
+    common.presence || names.first(5)
+  end
+
+  def activity_filter_path(event_name)
+    query = request.query_parameters.except("event_name")
+    query["event_name"] = event_name if event_name.present?
+    qs = query.to_query
+    qs.present? ? "#{request.path}?#{qs}" : request.path
+  end
+
+  def activity_prompt(reference)
+    filter = @activity&.event_filter.presence
+
+    if @classification&.protocol_key == "erc20"
+      event = filter || "Transfer"
+      "Analyze recent #{event} events for #{reference}. Find whale movements, repeated senders, exchange-like flows, zero-value transfers, routing paths, and unusual patterns."
+    elsif @protocol_adapter&.class&.type_tag == "uniswap_v3_pool"
+      event = filter || "Swap"
+      "Analyze recent #{event} events for #{reference}. Find large swaps, repeated traders, unusual price direction, liquidity changes, and routing patterns."
+    else
+      subject = filter ? "#{filter} events" : "events"
+      "Analyze recent #{subject} for #{reference}. Identify the most common event types, repeated addresses, large-value fields, and unusual patterns."
+    end
+  end
+
+  def activity_event_summary(event)
+    name = event.respond_to?(:event) ? event.event.to_s : ""
+    args = event.respond_to?(:args) && event.args.respond_to?(:to_h) ? event.args.to_h : {}
+
+    if name == "Transfer"
+      amount = args["value"] || args["amount"] || args["rawAmount"]
+      return nil unless args["from"] && args["to"] && amount
+
+      "#{truncate_address(args['from']) || args['from']} → #{truncate_address(args['to']) || args['to']} · #{format_erc20_event_amount(amount)}"
+    elsif name == "Approval"
+      amount = args["value"] || args["amount"] || args["rawAmount"]
+      owner = args["owner"] || args["src"] || args["from"]
+      spender = args["spender"] || args["guy"]
+      return nil unless owner && spender && amount
+
+      "#{truncate_address(owner) || owner} approved #{truncate_address(spender) || spender} · #{format_erc20_event_amount(amount)}"
+    else
+      nil
+    end
+  end
+
+  def format_activity_arg(value)
+    case value
+    when Hash
+      value.to_json
+    when Array
+      "[" + value.map { |item| format_activity_arg(item) }.join(", ") + "]"
+    when Integer
+      format_integer(value)
+    when String
+      if value.match?(/\A0x[0-9a-fA-F]{40}\z/)
+        value.downcase
+      elsif value.match?(/\A\d+\z/)
+        value.reverse.gsub(/(\d{3})(?=\d)/, '\1,').reverse
+      elsif value.start_with?("0x") && value.length > 18
+        "#{value[0, 10]}…#{value[-6..]}"
+      else
+        value
+      end
+    when nil
+      "—"
+    else
+      value.inspect
+    end
+  end
+
   # Same as format_abi_output but with protocol awareness: ERC-20 totalSupply()
   # returns raw uint256 wei, which is unreadable. If @classification marks this
   # contract as ERC-20 and decimals()/symbol() live values are available, render
@@ -302,6 +385,22 @@ module ContractsHelper
 
   def erc20_symbol
     live_value("symbol()").then { |v| v.is_a?(String) ? v : nil }
+  end
+
+  def format_erc20_event_amount(raw)
+    raw_int = raw.is_a?(Integer) ? raw : (raw.to_i if raw.is_a?(String) && raw.match?(/\A\d+\z/))
+    return format_activity_arg(raw) unless raw_int
+
+    decimals = erc20_decimals
+    symbol = erc20_symbol
+    return [ format_integer(raw_int), symbol ].compact.join(" ") unless decimals
+
+    scaled = (raw_int.to_d / (BigDecimal(10) ** decimals)).round(6, BigDecimal::ROUND_DOWN)
+    whole, frac = scaled.to_s("F").split(".")
+    whole_formatted = whole.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\1,').reverse
+    frac_trimmed = frac.to_s.sub(/0+\z/, "")
+    body = frac_trimmed.present? ? "#{whole_formatted}.#{frac_trimmed}" : whole_formatted
+    [ body, symbol ].compact.join(" ")
   end
 
   def live_value(signature)

@@ -57,10 +57,16 @@
     <%= render @protocol_adapter.template_partial, adapter: @protocol_adapter %>
   <% end %>
 
-  <div role="tablist" class="tabs tabs-lift tabs-lg">
-    <input type="radio" name="contract_view" role="tab" class="tab" aria-label="Docs" checked />
+  <% activity_selected = params[:event_name].present? %>
+  <div role="tablist" class="tabs tabs-lift tabs-lg" data-controller="contract-tabs">
+    <input type="radio" name="contract_view" role="tab" class="tab" aria-label="Docs" <%= "checked" unless activity_selected %> />
     <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
       <%= render "contracts/docs" %>
+    </div>
+
+    <input type="radio" name="contract_view" role="tab" class="tab" aria-label="Live Activity" data-contract-tabs-target="activity" <%= "checked" if activity_selected %> />
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
+      <%= render "contracts/activity" %>
     </div>
 
     <input type="radio" name="contract_view" role="tab" class="tab" aria-label="Source" />

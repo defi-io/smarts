@@ -23,6 +23,7 @@ class ContractsController < ApplicationController
     @live_values = @live_snapshot
     @protocol_adapter = resolve_protocol_adapter(@contract)
     @classification = classify(@contract)
+    @activity = load_recent_events(@contract)
 
     enqueue_ai_enrichment_if_needed(@contract)
   rescue EtherscanClient::NotVerifiedError
@@ -77,6 +78,24 @@ class ContractsController < ApplicationController
   rescue => e
     Rails.logger.warn("[ContractsController] classify failed: #{e.class}: #{e.message}")
     nil
+  end
+
+  def load_recent_events(contract)
+    ContractEvents::RecentFetcher.call(
+      contract: contract,
+      event_name: params[:event_name],
+      limit: ContractEvents::RecentFetcher::DEFAULT_LIMIT
+    )
+  rescue => e
+    Rails.logger.warn("[ContractsController] recent events failed: #{e.class}: #{e.message}")
+    ContractEvents::RecentFetcher::Result.new(
+      contract: contract.address,
+      chain: contract.chain.slug,
+      event_filter: params[:event_name].presence,
+      count: 0,
+      events: [],
+      error: e.message
+    )
   end
 
   def inspect_address(chain, address)
