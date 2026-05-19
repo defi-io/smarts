@@ -63,6 +63,39 @@ Ask your AI agent: "<%= activity_prompt(reference) %>"
 No recent events found in the current block window.
 <% end %>
 
+## Governance timeline
+
+<% if @governance&.error.present? && @governance.events.blank? %>
+Could not load governance timeline: <%= @governance.error %>
+<% elsif @governance&.events.present? %>
+Privileged events only — role changes, proxy upgrades, pauses, blacklisting, minter config. Newest first.
+<% if @governance.latest_block %>
+Scanned through block `<%= @governance.latest_block %>`.
+<% end %>
+
+<%
+  by_category = @governance.events.group_by(&:category)
+  GovernanceEvent::CATEGORIES.each do |cat|
+    next unless by_category[cat]&.any?
+%>
+### <%= governance_category_label(cat) %> (<%= by_category[cat].size %>)
+
+<% by_category[cat].first(10).each do |event| %>
+- **<%= event.event_name %>** at block `<%= event.block_number %>`<% if event.block_timestamp %>, <%= event.block_timestamp.iso8601 %><% end %><% if event.tx_hash.present? %>, tx `<%= event.tx_hash %>`<% end %>
+<% if event.summary.present? %>
+  - <%= event.summary %>
+<% end %>
+<% end %>
+<% if by_category[cat].size > 10 %>
+- _… <%= by_category[cat].size - 10 %> more_
+<% end %>
+
+<% end %>
+Ask your AI agent: "Show me how admin power has evolved on <%= reference %> — who held which role when, and what's changed in the past year."
+<% else %>
+No governance events recorded in the recent window. This contract may be fully autonomous, or no admin actions have occurred recently.
+<% end %>
+
 ## Links
 
 - Docs: <<%= canonical %>>

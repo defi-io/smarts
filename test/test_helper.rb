@@ -3,6 +3,10 @@ require_relative "../config/environment"
 require "rails/test_help"
 require "webmock/minitest"
 
+# Throttling against Etherscan is a production-only concern; in tests every
+# request is WebMock-stubbed so the sleep buys nothing and just slows the suite.
+EtherscanClient.throttle_interval = 0.0
+
 module SilenceEthFrozenStringWarnings
   def warn(message, category: nil, **)
     return if message.is_a?(String) &&

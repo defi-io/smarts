@@ -283,6 +283,49 @@ module ContractsHelper
     qs.present? ? "#{request.path}?#{qs}" : request.path
   end
 
+  def governance_filter_path(category)
+    query = request.query_parameters.except("gov_category")
+    query["gov_category"] = category if category.present?
+    qs = query.to_query
+    qs.present? ? "#{request.path}?#{qs}" : request.path
+  end
+
+  GOVERNANCE_CATEGORY_LABELS = {
+    "role_change" => "Role change",
+    "config"      => "Config",
+    "upgrade"     => "Upgrade",
+    "lifecycle"   => "Lifecycle",
+    "risk_action" => "Risk action"
+  }.freeze
+
+  GOVERNANCE_CATEGORY_BADGE = {
+    "role_change" => "badge-error",
+    "config"      => "badge-info",
+    "upgrade"     => "badge-warning",
+    "lifecycle"   => "badge-secondary",
+    "risk_action" => "badge-neutral"
+  }.freeze
+
+  GOVERNANCE_CATEGORY_DOT = {
+    "role_change" => "bg-error",
+    "config"      => "bg-info",
+    "upgrade"     => "bg-warning",
+    "lifecycle"   => "bg-secondary",
+    "risk_action" => "bg-neutral"
+  }.freeze
+
+  def governance_category_label(category)
+    GOVERNANCE_CATEGORY_LABELS[category] || category.to_s.titleize
+  end
+
+  def governance_category_badge_class(category)
+    GOVERNANCE_CATEGORY_BADGE[category] || "badge-ghost"
+  end
+
+  def governance_category_dot_class(category)
+    GOVERNANCE_CATEGORY_DOT[category] || "bg-base-300"
+  end
+
   def activity_prompt(reference)
     filter = @activity&.event_filter.presence
 

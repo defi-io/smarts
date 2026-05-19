@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_04_21_221224) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_18_221905) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -34,6 +34,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_21_221224) do
     t.string "compiler_version"
     t.string "contract_type"
     t.datetime "created_at", null: false
+    t.bigint "governance_last_scanned_block"
     t.string "implementation_address"
     t.string "name"
     t.jsonb "natspec"
@@ -42,6 +43,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_21_221224) do
     t.datetime "verified_at"
     t.index ["chain_id", "address"], name: "index_contracts_on_chain_id_and_address", unique: true
     t.index ["chain_id"], name: "index_contracts_on_chain_id"
+  end
+
+  create_table "governance_events", force: :cascade do |t|
+    t.jsonb "args", default: {}, null: false
+    t.bigint "block_number", null: false
+    t.datetime "block_timestamp"
+    t.string "category", null: false
+    t.bigint "contract_id", null: false
+    t.datetime "created_at", null: false
+    t.string "event_name", null: false
+    t.integer "log_index", null: false
+    t.string "summary"
+    t.string "tx_hash", null: false
+    t.datetime "updated_at", null: false
+    t.index ["contract_id", "block_number"], name: "index_governance_events_on_contract_and_block", order: { block_number: :desc }
+    t.index ["contract_id", "category"], name: "index_governance_events_on_contract_and_category"
+    t.index ["contract_id", "tx_hash", "log_index"], name: "index_governance_events_unique", unique: true
+    t.index ["contract_id"], name: "index_governance_events_on_contract_id"
   end
 
   create_table "protocol_templates", force: :cascade do |t|
@@ -58,4 +77,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_04_21_221224) do
   end
 
   add_foreign_key "contracts", "chains"
+  add_foreign_key "governance_events", "contracts"
 end

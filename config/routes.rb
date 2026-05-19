@@ -23,6 +23,7 @@ Rails.application.routes.draw do
       GetContractInfoTool,
       GetContractSourceTool,
       GetErc20InfoTool,
+      GetGovernanceTimelineTool,
       GetRecentEventsTool,
       GetUniswapV3PoolTool,
       InspectAddressTool,

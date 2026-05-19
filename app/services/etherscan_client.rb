@@ -2,8 +2,33 @@ class EtherscanClient
   BASE_URL = "https://api.etherscan.io/v2/api"
   TIMEOUT = 10
 
+  # Etherscan free tier caps at 5 req/sec; some accounts see 3/sec. Be
+  # conservative — sleep between calls so the TimelineFetcher's per-event-type
+  # fan-out doesn't trip the upstream limiter. Set to 0 in tests so stubbed
+  # connections don't pay the wall-clock cost.
+  cattr_accessor :throttle_interval, default: 0.4
+
+  @throttle_mutex = Mutex.new
+  @last_request_monotonic = nil
+
   class Error < StandardError; end
   class NotVerifiedError < Error; end
+
+  class << self
+    def throttle!
+      interval = throttle_interval.to_f
+      return if interval <= 0
+
+      @throttle_mutex.synchronize do
+        now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        if @last_request_monotonic
+          elapsed = now - @last_request_monotonic
+          sleep(interval - elapsed) if elapsed < interval
+        end
+        @last_request_monotonic = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      end
+    end
+  end
 
   def initialize(chain)
     @chain = chain
@@ -84,6 +109,7 @@ class EtherscanClient
   end
 
   def request_logs(params)
+    self.class.throttle!
     response = connection.get do |req|
       req.params = params.merge(chainid: @chain.chain_id, apikey: @api_key)
     end
@@ -97,6 +123,7 @@ class EtherscanClient
   end
 
   def request(params)
+    self.class.throttle!
     response = connection.get do |req|
       req.params = params.merge(chainid: @chain.chain_id, apikey: @api_key)
     end
