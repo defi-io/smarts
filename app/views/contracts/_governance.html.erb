@@ -1,0 +1,120 @@
+<% reference = @canonical_slug || "#{@chain.slug}/#{@contract.address}" %>
+<% selected_category = params[:gov_category].presence %>
+<% available_categories = @governance&.events&.map(&:category)&.uniq || [] %>
+
+<%= turbo_frame_tag "contract_governance", data: { turbo_action: "advance" } do %>
+<section class="mb-2">
+  <div class="flex items-start justify-between gap-4 flex-wrap mb-4">
+    <div>
+      <h2 class="text-2xl font-semibold">Governance Timeline</h2>
+      <p class="text-sm opacity-70 mt-1">Privileged events only — role changes, proxy upgrades, pauses, blacklisting, minter config. Decoded from the verified ABI, newest first.</p>
+    </div>
+
+    <% if @governance&.success? && @governance.latest_block %>
+      <span class="text-xs opacity-60 font-mono"
+            title="Backfilled up to block #<%= @governance.latest_block %>. Newer governance events appear automatically on next page view.">
+        Scanned through #<%= number_with_delimiter(@governance.latest_block) %>
+        <% if @governance.newly_fetched.positive? %>
+          · +<%= @governance.newly_fetched %> new
+        <% end %>
+      </span>
+    <% end %>
+  </div>
+
+  <% if available_categories.any? %>
+    <div class="flex items-center gap-2 flex-wrap mb-5">
+      <span class="text-xs opacity-60">Filter:</span>
+      <%= link_to "All", governance_filter_path(nil),
+            class: "btn btn-xs #{selected_category.blank? ? 'btn-primary' : 'btn-ghost'}",
+            data: { turbo_frame: "contract_governance", turbo_action: "advance" } %>
+      <% GovernanceEvent::CATEGORIES.each do |cat| %>
+        <% next unless available_categories.include?(cat) %>
+        <%= link_to governance_category_label(cat), governance_filter_path(cat),
+              class: "btn btn-xs #{selected_category == cat ? 'btn-primary' : 'btn-ghost'}",
+              data: { turbo_frame: "contract_governance", turbo_action: "advance" } %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @governance&.refreshing? %>
+    <%# data-controller="governance-poll" provides a websocket-free fallback:
+        after the configured interval it sets this frame's src to the current
+        URL, triggering a frame swap that picks up the fresh partial. %>
+    <div data-controller="governance-poll"
+         data-governance-poll-interval-value="4000"
+         class="alert alert-info alert-soft mb-3">
+      <span class="loading loading-spinner loading-xs"></span>
+      <span>Fetching the latest governance events in the background — this page updates automatically when ready.</span>
+    </div>
+  <% end %>
+
+  <% if @governance&.error.present? %>
+    <div class="alert alert-warning">
+      <span>Could not refresh governance timeline: <%= @governance.error %></span>
+    </div>
+  <% end %>
+
+  <% events = @governance&.events.to_a %>
+  <% events = events.select { |e| e.category == selected_category } if selected_category.present? %>
+
+  <% if events.blank? %>
+    <div class="alert">
+      <% if selected_category.present? %>
+        <span>No <%= governance_category_label(selected_category).downcase %> events in the timeline yet.</span>
+      <% elsif @governance&.refreshing? %>
+        <span>Backfilling the timeline now — refresh in a few seconds, or wait for the page to update automatically.</span>
+      <% elsif @governance&.error.present? %>
+        <span>No governance events loaded yet — see the warning above. The timeline will populate on retry.</span>
+      <% else %>
+        <span>No governance events recorded in the recent window. This contract may be fully autonomous, or no admin actions have occurred recently.</span>
+      <% end %>
+    </div>
+  <% else %>
+    <ol class="relative border-l-2 border-base-300 ml-3 space-y-4">
+      <% events.each do |event| %>
+        <li class="ml-6">
+          <span class="absolute -left-[9px] flex items-center justify-center w-4 h-4 rounded-full <%= governance_category_dot_class(event.category) %>"></span>
+          <div class="card bg-base-200 border border-base-300">
+            <div class="card-body py-4">
+              <div class="flex items-start justify-between gap-3 flex-wrap">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span class="badge <%= governance_category_badge_class(event.category) %>"><%= event.event_name %></span>
+                    <span class="badge badge-outline badge-sm"><%= governance_category_label(event.category) %></span>
+                  </div>
+                  <% if event.summary.present? %>
+                    <p class="text-sm mt-2 break-words"><%= event.summary %></p>
+                  <% end %>
+                  <div class="text-xs opacity-60 font-mono mt-2 break-all">
+                    Block #<%= number_with_delimiter(event.block_number) %>
+                    <% if event.block_timestamp %> · <%= event.block_timestamp.iso8601 %><% end %>
+                    <% if event.tx_hash.present? %>
+                      · tx
+                      <% if (tx_url = explorer_tx_url(@chain, event.tx_hash)) %>
+                        <%= link_to truncate_address(event.tx_hash) || event.tx_hash, tx_url, target: "_blank", rel: "noopener", class: "underline hover:text-primary" %>
+                      <% else %>
+                        <%= truncate_address(event.tx_hash) || event.tx_hash %>
+                      <% end %>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              <% if event.args.present? %>
+                <details class="mt-3">
+                  <summary class="text-xs opacity-60 cursor-pointer">Raw args</summary>
+                  <dl class="grid grid-cols-1 md:grid-cols-[9rem_1fr] gap-x-4 gap-y-1 mt-2 text-xs">
+                    <% event.args.each do |key, value| %>
+                      <dt class="opacity-60 font-mono"><%= key %></dt>
+                      <dd class="font-mono break-all"><%= format_activity_arg(value) %></dd>
+                    <% end %>
+                  </dl>
+                </details>
+              <% end %>
+            </div>
+          </div>
+        </li>
+      <% end %>
+    </ol>
+  <% end %>
+</section>
+<% end %>

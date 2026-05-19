@@ -230,6 +230,100 @@ class EtherscanClientTest < ActiveSupport::TestCase
       .to_return(status: 200, body: body.to_json, headers: { "Content-Type" => "application/json" })
   end
 
+  # ──────────────────────────────────────────────
+  # Throttling (set to 0 globally in test_helper; tests opt back in)
+  # ──────────────────────────────────────────────
+
+  test "throttle! sleeps when called within the configured interval" do
+    with_throttle(0.2) do
+      EtherscanClient.throttle!
+      elapsed = measure { EtherscanClient.throttle! }
+
+      assert_in_delta 0.2, elapsed, 0.05, "expected ~200ms gap, got #{elapsed}s"
+    end
+  end
+
+  test "throttle! does not sleep when called after the interval has already elapsed" do
+    with_throttle(0.05) do
+      EtherscanClient.throttle!
+      sleep 0.1
+      elapsed = measure { EtherscanClient.throttle! }
+
+      assert elapsed < 0.02, "expected no sleep, got #{elapsed}s"
+    end
+  end
+
+  test "throttle! is a no-op when interval is 0" do
+    with_throttle(0.0) do
+      EtherscanClient.throttle!
+      elapsed = measure { EtherscanClient.throttle! }
+
+      assert elapsed < 0.01, "expected no sleep when disabled, got #{elapsed}s"
+    end
+  end
+
+  test "request_logs invokes throttle! before hitting the network" do
+    stub_logs_response(status: "1", message: "OK", result: [])
+    spy = throttle_spy
+
+    EtherscanClient.singleton_class.send(:alias_method, :__original_throttle, :throttle!)
+    EtherscanClient.singleton_class.define_method(:throttle!) { spy.call }
+    begin
+      @client.get_logs(address: "0x" + "a" * 40)
+    ensure
+      EtherscanClient.singleton_class.send(:alias_method, :throttle!, :__original_throttle)
+      EtherscanClient.singleton_class.send(:remove_method, :__original_throttle)
+    end
+
+    assert_equal 1, spy.call_count
+  end
+
+  test "request invokes throttle! before hitting the network" do
+    stub_etherscan_abi
+    spy = throttle_spy
+
+    EtherscanClient.singleton_class.send(:alias_method, :__original_throttle, :throttle!)
+    EtherscanClient.singleton_class.define_method(:throttle!) { spy.call }
+    begin
+      @client.send(:fetch_abi, "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984")
+    ensure
+      EtherscanClient.singleton_class.send(:alias_method, :throttle!, :__original_throttle)
+      EtherscanClient.singleton_class.send(:remove_method, :__original_throttle)
+    end
+
+    assert_equal 1, spy.call_count
+  end
+
+  private
+
+  def with_throttle(interval)
+    original = EtherscanClient.throttle_interval
+    EtherscanClient.throttle_interval = interval
+    EtherscanClient.instance_variable_set(:@last_request_monotonic, nil)
+    yield
+  ensure
+    EtherscanClient.throttle_interval = original
+    EtherscanClient.instance_variable_set(:@last_request_monotonic, nil)
+  end
+
+  def measure
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    yield
+    Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+  end
+
+  def throttle_spy
+    spy = Object.new
+    spy.instance_variable_set(:@count, 0)
+    def spy.call
+      @count += 1
+    end
+    def spy.call_count
+      @count
+    end
+    spy
+  end
+
   def stub_logs_response(status:, message:, result:)
     body = { "status" => status, "message" => message, "result" => result }
     stub_request(:get, /api\.etherscan\.io.*getLogs/i).to_return(

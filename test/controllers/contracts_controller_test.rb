@@ -1021,7 +1021,151 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_match "Could not load recent activity", response.body
   end
 
+  test "show renders Governance tab with persisted timeline events and category filter chips" do
+    contract = contracts(:uni_token)
+    seed_governance_event(contract, name: "OwnershipTransferred", category: "role_change",
+                          summary: "Owner: 0xaaaa…aaaa → 0xbbbb…bbbb")
+    seed_governance_event(contract, name: "Blacklisted", category: "risk_action",
+                          summary: "0x1234…5678 added to blacklist", tx_hash: "0x" + "1" * 64)
+    mark_governance_fresh(contract)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity_result(contract) }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    assert_response :success
+    assert_match "Governance Timeline", response.body
+    assert_match "OwnershipTransferred", response.body
+    assert_match "Role change", response.body
+    assert_match "Risk action", response.body
+    assert_match "Owner: 0xaaaa…aaaa → 0xbbbb…bbbb", response.body
+    assert_match 'href="/eth/0x1111111111111111111111111111111111111111?gov_category=role_change"', response.body
+    assert_match 'aria-label="Docs" checked', response.body
+  end
+
+  test "show with ?gov_category= selects Governance tab" do
+    contract = contracts(:uni_token)
+    seed_governance_event(contract, name: "Blacklisted", category: "risk_action", summary: "x added")
+    mark_governance_fresh(contract)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity_result(contract) }) do
+        get contract_path(chain: "eth", address: contract.address), params: { gov_category: "risk_action" }
+      end
+    end
+
+    assert_response :success
+    assert_match 'aria-label="Governance" data-contract-tabs-target="governance" checked', response.body
+    assert_no_match 'aria-label="Docs" checked', response.body
+  end
+
+  test "contract .md includes Governance timeline grouped by category" do
+    contract = contracts(:uni_token)
+    seed_governance_event(contract, name: "OwnershipTransferred", category: "role_change",
+                          summary: "Owner: 0xaaaa…aaaa → 0xbbbb…bbbb")
+    seed_governance_event(contract, name: "Blacklisted", category: "risk_action",
+                          summary: "0x1234…5678 added to blacklist", tx_hash: "0x" + "1" * 64)
+    mark_governance_fresh(contract)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity_result(contract) }) do
+        get "/eth/#{contract.address}.md"
+      end
+    end
+
+    assert_response :success
+    assert_match "## Governance timeline", response.body
+    assert_match "### Role change (1)", response.body
+    assert_match "### Risk action (1)", response.body
+    assert_match "**OwnershipTransferred**", response.body
+    assert_match "Owner: 0xaaaa…aaaa → 0xbbbb…bbbb", response.body
+    assert_match "Ask your AI agent", response.body
+  end
+
+  test "show enqueues GovernanceTimelineRefreshJob and shows refreshing hint when cache is cold" do
+    contract = contracts(:uni_token)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity_result(contract) }) do
+        assert_enqueued_with(job: GovernanceTimelineRefreshJob, args: [ contract.id ]) do
+          get contract_path(chain: "eth", address: contract.address)
+        end
+      end
+    end
+
+    assert_response :success
+    assert_match "Fetching the latest governance events in the background", response.body
+    assert_match "Backfilling the timeline now", response.body
+  end
+
+  test "show does NOT enqueue refresh job when contract is already fresh" do
+    contract = contracts(:uni_token)
+    seed_governance_event(contract, name: "Pause", category: "lifecycle", summary: "Contract paused")
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity_result(contract) }) do
+        stub_class_method(GovernanceTimelineRefreshJob, :fresh?, ->(_c) { true }) do
+          assert_no_enqueued_jobs only: GovernanceTimelineRefreshJob do
+            get contract_path(chain: "eth", address: contract.address)
+          end
+        end
+      end
+    end
+
+    assert_response :success
+    assert_no_match "Fetching the latest governance events in the background", response.body
+    assert_match "Pause", response.body
+  end
+
   private
+
+  def seed_governance_event(contract, name:, category:, summary:, tx_hash: nil, block: 18_234_567)
+    contract.governance_events.create!(
+      block_number: block,
+      tx_hash: tx_hash || "0x" + SecureRandom.hex(32),
+      log_index: 0,
+      event_name: name,
+      category: category,
+      summary: summary,
+      args: {},
+      block_timestamp: Time.utc(2024, 8, 12)
+    )
+  end
+
+  def mark_governance_fresh(contract)
+    Rails.cache.write(
+      GovernanceTimelineRefreshJob.freshness_key(contract),
+      Time.current,
+      expires_in: 30.minutes
+    )
+  end
+
+  def governance_result(contract, events: [], error: nil, latest_block: 25_000_000, newly_fetched: 0)
+    GovernanceEvents::TimelineFetcher::Result.new(
+      contract: contract.address,
+      chain: contract.chain.slug,
+      total_events: events.length,
+      newly_fetched: newly_fetched,
+      latest_block: latest_block,
+      events: events,
+      error: error
+    )
+  end
+
+  def governance_record(name:, category:, summary:, tx_hash: "0x" + "a" * 64, block: 18_234_567)
+    GovernanceEvent.new(
+      block_number: block,
+      tx_hash: tx_hash,
+      log_index: 0,
+      event_name: name,
+      category: category,
+      summary: summary,
+      args: {},
+      block_timestamp: Time.utc(2024, 8, 12)
+    )
+  end
 
   def activity_result(contract, events: [], event_filter: nil, error: nil)
     ContractEvents::RecentFetcher::Result.new(

@@ -24,6 +24,7 @@ class ContractsController < ApplicationController
     @protocol_adapter = resolve_protocol_adapter(@contract)
     @classification = classify(@contract)
     @activity = load_recent_events(@contract)
+    @governance = load_governance_timeline(@contract)
 
     enqueue_ai_enrichment_if_needed(@contract)
   rescue EtherscanClient::NotVerifiedError
@@ -95,6 +96,43 @@ class ContractsController < ApplicationController
       count: 0,
       events: [],
       error: e.message
+    )
+  end
+
+  def load_governance_timeline(contract)
+    # Synchronously serve whatever's already persisted; Etherscan calls happen
+    # in the background via GovernanceTimelineRefreshJob (broadcasts a Turbo
+    # morph refresh when done). Keeps the show action sub-second even on cold
+    # contracts where a full backfill would otherwise take 5-10s.
+    cached_events = contract.governance_events.newest_first.to_a
+    refreshing = false
+
+    unless GovernanceTimelineRefreshJob.fresh?(contract)
+      GovernanceTimelineRefreshJob.perform_later(contract.id)
+      refreshing = true
+    end
+
+    GovernanceEvents::TimelineFetcher::Result.new(
+      contract: contract.address,
+      chain: contract.chain.slug,
+      total_events: cached_events.length,
+      newly_fetched: 0,
+      latest_block: contract.governance_last_scanned_block,
+      events: cached_events,
+      error: nil,
+      refreshing: refreshing
+    )
+  rescue => e
+    Rails.logger.warn("[ContractsController] governance fetch failed: #{e.class}: #{e.message}")
+    GovernanceEvents::TimelineFetcher::Result.new(
+      contract: contract.address,
+      chain: contract.chain.slug,
+      total_events: 0,
+      newly_fetched: 0,
+      latest_block: nil,
+      events: contract.governance_events.newest_first.to_a,
+      error: e.message,
+      refreshing: false
     )
   end
 

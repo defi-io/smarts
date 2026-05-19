@@ -58,18 +58,28 @@
   <% end %>
 
   <% activity_selected = params[:event_name].present? %>
+  <% governance_selected = params[:gov_category].present? %>
+  <% docs_selected = !activity_selected && !governance_selected %>
+  <%# data-turbo-permanent on each tab radio so user's selection survives the
+      background-job-triggered Turbo morph refresh. Server-rendered `checked`
+      still wins on initial load (when there's no client state to preserve). %>
   <div role="tablist" class="tabs tabs-lift tabs-lg" data-controller="contract-tabs">
-    <input type="radio" name="contract_view" role="tab" class="tab" aria-label="Docs" <%= "checked" unless activity_selected %> />
+    <input id="contract_tab_docs" data-turbo-permanent type="radio" name="contract_view" role="tab" class="tab" aria-label="Docs" <%= "checked" if docs_selected %> />
     <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
       <%= render "contracts/docs" %>
     </div>
 
-    <input type="radio" name="contract_view" role="tab" class="tab" aria-label="Live Activity" data-contract-tabs-target="activity" <%= "checked" if activity_selected %> />
+    <input id="contract_tab_activity" data-turbo-permanent type="radio" name="contract_view" role="tab" class="tab" aria-label="Live Activity" data-contract-tabs-target="activity" <%= "checked" if activity_selected %> />
     <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
       <%= render "contracts/activity" %>
     </div>
 
-    <input type="radio" name="contract_view" role="tab" class="tab" aria-label="Source" />
+    <input id="contract_tab_governance" data-turbo-permanent type="radio" name="contract_view" role="tab" class="tab" aria-label="Governance" data-contract-tabs-target="governance" <%= "checked" if governance_selected %> />
+    <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
+      <%= render "contracts/governance" %>
+    </div>
+
+    <input id="contract_tab_source" data-turbo-permanent type="radio" name="contract_view" role="tab" class="tab" aria-label="Source" />
     <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
       <%= render "contracts/source" %>
     </div>
