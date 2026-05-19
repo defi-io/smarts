@@ -59,7 +59,7 @@ module ChainReader
           fromBlock: "0x#{from_block.to_i.to_s(16)}",
           toBlock: to_block.is_a?(Integer) ? "0x#{to_block.to_s(16)}" : to_block
         }
-        filter[:topics] = [topic0] if topic0
+        filter[:topics] = [ topic0 ] if topic0
 
         raw = client_for(chain).eth_get_logs(filter)
         result = raw.is_a?(Hash) ? raw["result"] : raw
