@@ -81,7 +81,7 @@ Window: blocks `<%= @activity.from_block %>` → `<%= @activity.latest_block %>`
   - topic0: `<%= event.topic0 || "unknown" %>`
 <% elsif event.args.present? %>
 <% event.args.each do |key, value| %>
-  - <%= key.presence || "arg" %>: `<%= format_activity_arg(value) %>`
+  - <%= format_activity_arg(key.presence || "arg") %>: `<%= format_activity_arg(value) %>`
 <% end %>
 <% end %>
 <% end %>

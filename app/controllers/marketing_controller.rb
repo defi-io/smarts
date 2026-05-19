@@ -56,6 +56,8 @@ class MarketingController < ApplicationController
     { name: "get_contract_source",  blurb: "Fetch the verified Solidity source: file index, single-file content, or substring grep across files." },
     { name: "get_erc20_info",       blurb: "Live token state: formatted supply, price, market cap, issuer, admin controls (paused/owner/minter/…)." },
     { name: "get_governance_timeline", blurb: "Privileged-event history for a contract: role changes, proxy upgrades, pauses, blacklisting, minter config — decoded, categorized, summarized. Filter by category." },
+    { name: "get_polymarket_market", blurb: "Polymarket market state by slug or condition ID: outcomes, prices when present, resolution payouts, and CTF position IDs." },
+    { name: "get_polymarket_position", blurb: "Wallet balances for explicit Polymarket markets by condition ID or slug, including redeemable resolved outcomes." },
     { name: "get_recent_events",    blurb: "Most recent events emitted by a contract, decoded against its ABI. Filter by event name; unknown topics return raw." },
     { name: "get_uniswap_v3_pool",  blurb: "Live pool state: token pair, fee, both-direction price, liquidity, tick, TVL." },
     { name: "inspect_address",      blurb: "Classifies any address as EOA / contract / EIP-7702 wallet, plus balance, nonce, and reverse ENS." },
@@ -71,6 +73,7 @@ class MarketingController < ApplicationController
     { q: "Show me where USDC's blacklisting logic lives in source.", tool: "get_contract_source" },
     { q: "Show me the last 10 swaps on the USDC/WETH 0.05% pool.", tool: "get_recent_events" },
     { q: "How has admin power on USDC evolved? Show me every role change and pause.", tool: "get_governance_timeline" },
+    { q: "What does Polymarket think about this market by slug?", tool: "get_polymarket_market" },
     { q: "Call balanceOf(0xabc…) on USDC.",                     tool: "read_contract_state" }
   ].freeze
 

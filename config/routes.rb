@@ -24,6 +24,8 @@ Rails.application.routes.draw do
       GetContractSourceTool,
       GetErc20InfoTool,
       GetGovernanceTimelineTool,
+      GetPolymarketMarketTool,
+      GetPolymarketPositionTool,
       GetRecentEventsTool,
       GetUniswapV3PoolTool,
       InspectAddressTool,

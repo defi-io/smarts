@@ -396,6 +396,7 @@ module ContractsHelper
     when Integer
       format_integer(value)
     when String
+      value = normalize_display_string(value)
       if value.match?(/\A0x[0-9a-fA-F]{40}\z/)
         value.downcase
       elsif value.match?(/\A\d+\z/)
@@ -480,6 +481,19 @@ module ContractsHelper
   def format_integer(n)
     return n.to_s unless n.is_a?(Integer)
     n.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\1,').reverse
+  end
+
+  def normalize_display_string(value)
+    return value unless value.is_a?(String)
+
+    if value.encoding == Encoding::ASCII_8BIT
+      candidate = value.dup.force_encoding(Encoding::UTF_8)
+      return candidate if candidate.valid_encoding?
+
+      return "0x#{value.unpack1('H*')}"
+    end
+
+    value.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�")
   end
 
   def format_tuple(value, components)

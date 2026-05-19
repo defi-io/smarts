@@ -948,6 +948,26 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_match "Analyze recent events for eth/#{contract.address}", response.body
   end
 
+  test "show renders binary event args without encoding errors" do
+    contract = contracts(:uni_token)
+    activity = activity_result(contract, events: [ activity_event("OrderFilled", {
+      "maker" => "0x" + "a" * 40,
+      "bin_key".b => "ok",
+      "orderHash" => ("\xFF\xFE\x00abc").b
+    }) ])
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    assert_response :success
+    assert_match "OrderFilled", response.body
+    assert_match "bin_key", response.body
+    assert_match "0xfffe00616263", response.body
+  end
+
   test "show passes event_name query param into recent activity fetcher" do
     contract = contracts(:uni_token)
     seen_event_name = nil

@@ -2,7 +2,7 @@ module ProtocolAdapters
   class Base
     # Explicit adapter registry in match-priority order. Adding a new adapter
     # means adding both the class and its name here.
-    ADAPTER_NAMES = %w[UniswapV3Adapter GenericErc20Adapter].freeze
+    ADAPTER_NAMES = %w[PolymarketAdapter UniswapV3Adapter GenericErc20Adapter].freeze
 
     def self.adapter_classes
       ADAPTER_NAMES.map { |name| ProtocolAdapters.const_get(name) }

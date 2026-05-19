@@ -68,6 +68,23 @@ module ContractSlugs
     "aavev3-pool-optimism"       => [ "optimism", "0x794a61358d6845594f94dc1db02a252b5b4814ad" ],
     "aavev3-pool-polygon"        => [ "polygon", "0x794a61358d6845594f94dc1db02a252b5b4814ad" ],
 
+    # Polymarket (Polygon mainnet). Two exchange generations run side-by-side
+    # as of 2026-04: V1 settles in USDC.e, V2 settles in Polymarket USD.
+    # `conditional-tokens` is the shared Gnosis CTF ERC-1155 holding YES/NO
+    # outcome balances. The UMA adapters are oracles for binary markets;
+    # `neg-risk-adapter` is the oracle for multi-outcome markets. All three
+    # UMA adapter generations remain referenced by live conditions, so we
+    # surface them all rather than gating on "current" version.
+    "polymarket-ctf-exchange-v1-polygon"      => [ "polygon", "0x4bfb41d5b3570defd03c39a9a4d8de6bd8b8982e" ],
+    "polymarket-ctf-exchange-v2-polygon"      => [ "polygon", "0xe111180000d2663c0091e4f400237545b87b996b" ],
+    "polymarket-neg-risk-exchange-v1-polygon" => [ "polygon", "0xc5d563a36ae78145c45a50134d48a1215220f80a" ],
+    "polymarket-neg-risk-exchange-v2-polygon" => [ "polygon", "0xe2222d279d744050d28e00520010520000310f59" ],
+    "polymarket-neg-risk-adapter-polygon"     => [ "polygon", "0xd91e80cf2e7be2e162c6513ced06f1dd0da35296" ],
+    "polymarket-conditional-tokens-polygon"   => [ "polygon", "0x4d97dcd97ec945f40cf65f87097ace5ea0476045" ],
+    "polymarket-uma-adapter-v1-polygon"       => [ "polygon", "0x71392e133063cc0d16f40e1f9b60227404bc03f7" ],
+    "polymarket-uma-adapter-v2-polygon"       => [ "polygon", "0x6a9d222616c90fca5754cd1333cfd9b7fb6a4f74" ],
+    "polymarket-uma-adapter-v3-polygon"       => [ "polygon", "0x2f5e3684cb1f318ec51b00edba38d79ac2c0aa9d" ],
+
     # High-signal Uniswap V3 pools (compound slug: protocol-token0-token1-chain).
     # If/when we add same-pair-different-fee pools, append fee tier:
     # "univ3-usdc-weth-005-eth" (0.05%), "univ3-usdc-weth-030-eth" (0.3%).

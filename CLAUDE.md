@@ -91,6 +91,7 @@ external_apis:
   etherscan: Etherscan V2 API (多链统一 key)
   tvl_yields: DefiLlama API (free, 做速率限制)
   prices: CoinGecko API
+  polymarket: Gamma + CLOB read-only APIs (Polymarket 例外，见下文)
   rpc: Alchemy + 自建 public RPC fallback
 ```
 
@@ -144,6 +145,22 @@ external_apis:
 | Month 2 | Uniswap V3 全生态（Router、Factory、NFTManager）| UniswapV3Adapter 扩展 |
 | Month 3 | Aave V3 | AaveV3Adapter |
 | Month 3 | 通用 ERC-20 / ERC-721 | GenericErc20Adapter |
+| Month 4+ | Polymarket (CTFExchange / NegRiskCtfExchange / ConditionalTokens / UmaCtfAdapter) | PolymarketAdapter |
+
+### Polymarket（off-chain API 例外）
+
+Polymarket 是唯一允许调用 off-chain REST API 的协议适配器。理由：
+- Polymarket 是 off-chain order book + on-chain settlement 模型，当前市场元数据、赔率和订单簿不完整存在链上；必须读取 `gamma-api.polymarket.com` 和 `clob.polymarket.com`
+- “AI agent 查询事件市场状态/赔率”是 Smarts 的高价值 MCP 场景；只看链上 settlement 无法回答核心问题
+- 仅限只读请求；下单、签名、交易、钱包连接仍然绝对不做
+
+实现位置：
+- `app/services/polymarket_client.rb`：Faraday + Solid Cache，负责 Gamma/CLOB HTTP 边界
+- `app/services/polymarket/*`：market、position、resolution 编排
+- `app/services/chain_reader/conditional_tokens_reader.rb`：Gnosis CTF on-chain state/balance reads
+- `app/tools/get_polymarket_market_tool.rb` / `get_polymarket_position_tool.rb`：MCP 入口
+
+支持的合约固定为 Polygon mainnet，见 `app/services/contract_slugs.rb` 的 `polymarket-*` curated slugs。
 
 ---
 

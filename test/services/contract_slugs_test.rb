@@ -37,7 +37,7 @@ class ContractSlugsTest < ActiveSupport::TestCase
   # are edited later.
 
   test "registry has enough curated blue-chip shortcuts for v1" do
-    assert_operator ContractSlugs::MAP.size, :>=, 45
+    assert_operator ContractSlugs::MAP.size, :>=, 54
   end
 
   test "every slug address is lowercase 0x + 40 hex" do
@@ -134,5 +134,37 @@ class ContractSlugsTest < ActiveSupport::TestCase
                  ContractSlugs.resolve("aavev3-pool-eth")
     assert_equal [ "base", "0xa238dd80c259a72e81d7e4664a9801593f98d1c5" ],
                  ContractSlugs.resolve("aavev3-pool-base")
+  end
+
+  test "curated protocol slugs include the Polymarket contract family on Polygon" do
+    # Exchanges: V1 (USDC.e collateral) and V2 (Polymarket USD collateral) run in parallel
+    assert_equal [ "polygon", "0x4bfb41d5b3570defd03c39a9a4d8de6bd8b8982e" ],
+                 ContractSlugs.resolve("polymarket-ctf-exchange-v1-polygon")
+    assert_equal [ "polygon", "0xe111180000d2663c0091e4f400237545b87b996b" ],
+                 ContractSlugs.resolve("polymarket-ctf-exchange-v2-polygon")
+
+    # Multi-outcome (neg-risk) variants
+    assert_equal [ "polygon", "0xc5d563a36ae78145c45a50134d48a1215220f80a" ],
+                 ContractSlugs.resolve("polymarket-neg-risk-exchange-v1-polygon")
+    assert_equal [ "polygon", "0xd91e80cf2e7be2e162c6513ced06f1dd0da35296" ],
+                 ContractSlugs.resolve("polymarket-neg-risk-adapter-polygon")
+
+    # Shared CTF (ERC-1155) and UMA oracle adapters across binary markets
+    assert_equal [ "polygon", "0x4d97dcd97ec945f40cf65f87097ace5ea0476045" ],
+                 ContractSlugs.resolve("polymarket-conditional-tokens-polygon")
+    assert_equal [ "polygon", "0x6a9d222616c90fca5754cd1333cfd9b7fb6a4f74" ],
+                 ContractSlugs.resolve("polymarket-uma-adapter-v2-polygon")
+  end
+
+  # The reverse lookup is what the contracts controller uses to redirect
+  # `/polygon/0x...` hex URLs to `/polymarket-*-polygon`. Confirm a sampling
+  # of new Polymarket addresses route there.
+  test "for returns Polymarket slugs from canonical addresses" do
+    assert_equal "polymarket-ctf-exchange-v2-polygon",
+                 ContractSlugs.for("polygon", "0xe111180000d2663c0091e4f400237545b87b996b")
+    assert_equal "polymarket-conditional-tokens-polygon",
+                 ContractSlugs.for("polygon", "0x4d97dcd97ec945f40cf65f87097ace5ea0476045")
+    assert_equal "polymarket-uma-adapter-v3-polygon",
+                 ContractSlugs.for("polygon", "0x2f5e3684cb1f318ec51b00edba38d79ac2c0aa9d")
   end
 end

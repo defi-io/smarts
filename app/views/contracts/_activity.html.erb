@@ -91,7 +91,7 @@
             <% elsif event.args.present? %>
               <dl class="grid grid-cols-1 md:grid-cols-[9rem_1fr] gap-x-4 gap-y-2 mt-4 text-sm">
                 <% event.args.each do |key, value| %>
-                  <dt class="opacity-60 font-mono"><%= key.presence || "arg" %></dt>
+                  <dt class="opacity-60 font-mono"><%= format_activity_arg(key.presence || "arg") %></dt>
                   <dd class="font-mono break-all"><%= format_activity_arg(value) %></dd>
                 <% end %>
               </dl>
