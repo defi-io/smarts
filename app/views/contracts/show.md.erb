@@ -34,6 +34,34 @@ Setup for Claude Code, Cursor, Windsurf, Cline: <https://mcp.smarts.md/>
 <%= render @protocol_adapter.template_partial, adapter: @protocol_adapter %>
 <% end %>
 
+## Admin & Risk
+
+<% if @admin_risk&.error.present? %>
+Could not build admin risk profile: <%= @admin_risk.error %>
+<% elsif @admin_risk %>
+<%= @admin_risk.summary %>
+
+<% if @admin_risk.risk_flags.any? %>
+- **Detected controls:** <%= @admin_risk.risk_flags.map { |flag| admin_risk_flag_label(flag) }.join(", ") %>
+<% end %>
+<% if @admin_risk.controls.any? %>
+- **Current controls:**
+<% @admin_risk.controls.each do |control| %>
+  - <%= control[:label] %>: `<%= admin_risk_value(control) %>`
+<% end %>
+<% end %>
+<% if @admin_risk.recent_governance[:count].to_i.positive? %>
+- **Governance events loaded:** <%= @admin_risk.recent_governance[:count] %><% if @admin_risk.recent_governance[:latest_event] %> (latest: `<%= @admin_risk.recent_governance[:latest_event] %>` at block `<%= @admin_risk.recent_governance[:latest_block] || "unknown" %>`)<% end %>
+<% end %>
+<% if @admin_risk.warnings.any? %>
+<% @admin_risk.warnings.each do |warning| %>
+- _Note:_ <%= warning %>
+<% end %>
+<% end %>
+<% else %>
+No admin risk profile available.
+<% end %>
+
 ## Recent activity
 
 <% if @activity&.error.present? %>

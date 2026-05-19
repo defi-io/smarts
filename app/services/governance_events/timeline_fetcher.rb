@@ -55,7 +55,7 @@ module GovernanceEvents
         begin
           topic0 = ChainReader::EventDecoder.event_topic0(event_abi)
           newly += fetch_event_type(event_abi, topic0, from_block, latest_block)
-        rescue EtherscanClient::Error => e
+        rescue EtherscanClient::Error, ChainReader::Base::RpcError => e
           failures << "#{event_abi['name']}: #{e.message}"
           Rails.logger.warn("[GovernanceEvents] #{event_abi['name']} failed: #{e.class}: #{e.message}")
         end
@@ -102,15 +102,7 @@ module GovernanceEvents
       newly = 0
       page = 1
       loop do
-        logs = etherscan.get_logs(
-          address: @contract.address,
-          topic0: topic0,
-          from_block: from,
-          to_block: to,
-          page: page,
-          offset: PAGE_SIZE,
-          sort: "asc"
-        )
+        logs = fetch_logs(topic0: topic0, from_block: from, to_block: to, page: page)
         break if logs.empty?
 
         logs.each { |log| newly += 1 if persist(event_abi, log) }
@@ -119,6 +111,32 @@ module GovernanceEvents
         page += 1
       end
       newly
+    end
+
+    # Etherscan first (has pagination + timestamps); RPC fallback for chains
+    # where the free Etherscan plan doesn't support getLogs.
+    def fetch_logs(topic0:, from_block:, to_block:, page: 1)
+      etherscan.get_logs(
+        address: @contract.address,
+        topic0: topic0,
+        from_block: from_block,
+        to_block: to_block,
+        page: page,
+        offset: PAGE_SIZE,
+        sort: "asc"
+      )
+    rescue EtherscanClient::Error => e
+      # RPC doesn't support pagination; only use on first page to avoid dupes.
+      raise if page > 1
+
+      Rails.logger.info("[GovernanceEvents] Etherscan logs failed (#{e.message}), falling back to RPC")
+      ChainReader::Base.eth_get_logs(
+        @contract.chain,
+        address: @contract.address,
+        topic0: topic0,
+        from_block: from_block,
+        to_block: to_block
+      )
     end
 
     def persist(event_abi, raw_log)

@@ -59,21 +59,37 @@ module ContractEvents
 
       latest = ChainReader::Base.eth_block_number(@contract.chain)
       from = [ latest - RECENT_BLOCK_WINDOW, 0 ].max
-      raw_logs = EtherscanClient.new(@contract.chain).get_logs(
+      raw_logs = fetch_logs(from, latest)
+
+      events = raw_logs.reverse.first(@limit).map { |log| build_event(log) }
+      result(latest_block: latest, from_block: from, count: events.size, events: events)
+    rescue EtherscanClient::Error, ChainReader::Base::RpcError => e
+      error_result("#{e.message}")
+    end
+
+    private
+
+    # Try Etherscan first (richer response with timestamps); fall back to
+    # RPC eth_getLogs when Etherscan doesn't support this chain's logs on
+    # the current API plan.
+    def fetch_logs(from, latest)
+      EtherscanClient.new(@contract.chain).get_logs(
         address: @contract.address,
         topic0: topic0,
         from_block: from,
         to_block: latest,
         offset: ETHERSCAN_MAX_OFFSET
       )
-
-      events = raw_logs.reverse.first(@limit).map { |log| build_event(log) }
-      result(latest_block: latest, from_block: from, count: events.size, events: events)
     rescue EtherscanClient::Error => e
-      error_result("Etherscan: #{e.message}")
+      Rails.logger.info("[RecentFetcher] Etherscan logs failed (#{e.message}), falling back to RPC")
+      ChainReader::Base.eth_get_logs(
+        @contract.chain,
+        address: @contract.address,
+        topic0: topic0,
+        from_block: from,
+        to_block: latest
+      )
     end
-
-    private
 
     def events_abi
       @events_abi ||= @contract.events

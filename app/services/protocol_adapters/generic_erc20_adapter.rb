@@ -15,36 +15,6 @@ module ProtocolAdapters
     ERC20_DECIMALS     = { "name" => "decimals",    "inputs" => [], "outputs" => [ { "type" => "uint8" } ] }.freeze
     ERC20_TOTAL_SUPPLY = { "name" => "totalSupply", "inputs" => [], "outputs" => [ { "type" => "uint256" } ] }.freeze
 
-    # Optional zero-arg admin/status functions found on centralized stablecoins
-    # (USDC's FiatToken, USDT's TetherToken, etc). Each probed only if present
-    # in the ABI. Ordered by severity so the view can render in priority order.
-    #
-    # `abi:` uses string keys for compatibility with ChainReader helpers which
-    # expect `fn_abi["name"]`, `fn_abi["inputs"]`, `fn_abi["outputs"]`.
-    def self.admin_spec(name, output_type, label, severity = nil)
-      {
-        abi: { "name" => name, "inputs" => [], "outputs" => [ { "type" => output_type } ] },
-        label: label,
-        severity: severity
-      }
-    end
-
-    ADMIN_STATUS_FUNCTIONS = [
-      admin_spec("paused",          "bool",    "Paused",     :critical),
-      admin_spec("deprecated",      "bool",    "Deprecated", :critical),
-      admin_spec("upgradedAddress", "address", "Upgraded to")
-    ].freeze
-
-    ADMIN_ROLE_FUNCTIONS = [
-      admin_spec("owner",        "address", "Owner"),
-      admin_spec("masterMinter", "address", "Master minter"),
-      admin_spec("pauser",       "address", "Pauser"),
-      admin_spec("blacklister",  "address", "Blacklister"),
-      admin_spec("rescuer",      "address", "Rescuer")
-    ].freeze
-
-    ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
-
     # Issuer whitelist keyed by chain slug → lowercase address. Covers the big
     # blue-chip tokens on each supported chain. L2 variants that are bridged
     # from mainnet (not issued directly by the named entity) get a "(bridged)"
@@ -132,7 +102,7 @@ module ProtocolAdapters
     end
 
     def read_panel_data
-      token, admin, block_number = read_onchain_state
+      token, block_number = read_onchain_state
       return { error: "could not read token metadata" } if token[:symbol].blank? || token[:decimals].nil?
 
       price, price_observed_at = fetch_price_with_timestamp
@@ -148,81 +118,34 @@ module ProtocolAdapters
         price_observed_at: price_observed_at,
         market_cap_usd: market_cap,
         issuer: lookup_issuer,
-        admin_status: admin[:status],
-        admin_roles:  admin[:roles],
         block_number: block_number,
         fetched_at: Time.current
       }
     end
 
-    # Returns [token_metadata_hash, admin_hash, block_number] from a single
-    # multicall that bundles the 4 core ERC-20 fields with any admin functions
-    # present in the ABI. Admin functions not in the ABI are skipped (no probe
-    # RPC cost).
+    # Returns [token_metadata_hash, block_number] from a single multicall over
+    # the 4 core ERC-20 view functions. Admin / role probing moved to the
+    # generic AdminRisk::Profiler so the token panel stays focused on
+    # economics (symbol / decimals / supply / price).
     def read_onchain_state
-      admin_probe_status = admin_functions_in_abi(ADMIN_STATUS_FUNCTIONS)
-      admin_probe_roles  = admin_functions_in_abi(ADMIN_ROLE_FUNCTIONS)
-
-      core_abis  = [ ERC20_NAME, ERC20_SYMBOL, ERC20_DECIMALS, ERC20_TOTAL_SUPPLY ]
-      admin_abis = (admin_probe_status + admin_probe_roles).map { |spec| spec[:abi] }
-
-      calls = (core_abis + admin_abis).map do |fn_abi|
+      core_abis = [ ERC20_NAME, ERC20_SYMBOL, ERC20_DECIMALS, ERC20_TOTAL_SUPPLY ]
+      calls = core_abis.map do |fn_abi|
         ChainReader::Multicall3Client::Call.new(target: contract.address, function: fn_abi)
       end
       batch = ChainReader::Multicall3Client.call(chain: chain, calls: calls)
       r = batch.results
 
-      core_results, admin_results = r.first(4), r.drop(4)
-      status_results = admin_results.first(admin_probe_status.length)
-      role_results   = admin_results.drop(admin_probe_status.length)
-
       token = {
-        name:         core_results[0].success ? core_results[0].values.first : nil,
-        symbol:       core_results[1].success ? core_results[1].values.first : nil,
-        decimals:     core_results[2].success ? core_results[2].values.first : nil,
-        total_supply: core_results[3].success ? core_results[3].values.first : nil
+        name:         r[0].success ? r[0].values.first : nil,
+        symbol:       r[1].success ? r[1].values.first : nil,
+        decimals:     r[2].success ? r[2].values.first : nil,
+        total_supply: r[3].success ? r[3].values.first : nil
       }
 
-      admin = {
-        status: admin_probe_status.zip(status_results).filter_map { |fn, res| build_admin_entry(fn, res) },
-        roles:  admin_probe_roles.zip(role_results).filter_map  { |fn, res| build_admin_entry(fn, res) }
-      }
-
-      [ token, admin, batch.block_number ]
+      [ token, batch.block_number ]
     rescue StandardError => e
       Rails.logger.warn("[GenericErc20Adapter] onchain read failed: #{e.class}: #{e.message}")
-      [ { name: nil, symbol: nil, decimals: nil, total_supply: nil }, { status: [], roles: [] }, nil ]
-    end
-
-    # From the given list of admin function specs, return only those whose
-    # (name, zero-inputs, matching output-type) signature exists in the
-    # contract's ABI.
-    def admin_functions_in_abi(specs)
-      return [] unless contract.abi.is_a?(Array)
-
-      abi_zero_arg_by_name = contract.abi.each_with_object({}) do |item, acc|
-        next unless item["type"] == "function" && Array(item["inputs"]).empty?
-
-        acc[item["name"]] = item
-      end
-
-      specs.select do |spec|
-        abi_fn = abi_zero_arg_by_name[spec[:abi]["name"]]
-        abi_fn &&
-          Array(abi_fn["outputs"]).length == 1 &&
-          abi_fn["outputs"].first["type"] == spec[:abi]["outputs"].first["type"]
-      end
-    end
-
-    def build_admin_entry(spec, result)
-      return nil unless result.success && !result.values.empty?
-
-      {
-        key: spec[:abi]["name"],
-        label: spec[:label],
-        severity: spec[:severity],
-        value: result.values.first
-      }
+      [ { name: nil, symbol: nil, decimals: nil, total_supply: nil }, nil ]
     end
 
     # Returns [price_usd, observed_at_time] so the UI can show price freshness

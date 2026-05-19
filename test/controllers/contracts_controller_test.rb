@@ -93,7 +93,7 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     fake_adapter.define_singleton_method(:panel_data) do
       { symbol: "UNI", name: "Uniswap", decimals: 18, total_supply_raw: nil,
         total_supply_formatted: nil, price_usd: nil, market_cap_usd: nil,
-        issuer: nil, admin_status: [], admin_roles: [] }
+        issuer: nil }
     end
 
     stub_class_method(ProtocolAdapters::Base, :resolve, ->(_) { fake_adapter }) do
@@ -579,7 +579,7 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
       { symbol: "UNI", name: "Uniswap", decimals: 18,
         total_supply_raw: 10**27, total_supply_formatted: "1,000,000,000 UNI",
         price_usd: 6.5, price_observed_at: 4.minutes.ago - 1.second,
-        market_cap_usd: nil, issuer: nil, admin_status: [], admin_roles: [] }
+        market_cap_usd: nil, issuer: nil }
     end
     fake_adapter.define_singleton_method(:template_partial) { "protocol_adapters/generic_erc20" }
 
@@ -601,7 +601,7 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
       { symbol: "UNI", name: "Uniswap", decimals: 18,
         total_supply_raw: nil, total_supply_formatted: nil,
         price_usd: 6.5, price_observed_at: nil,
-        market_cap_usd: nil, issuer: nil, admin_status: [], admin_roles: [] }
+        market_cap_usd: nil, issuer: nil }
     end
     fake_adapter.define_singleton_method(:template_partial) { "protocol_adapters/generic_erc20" }
 
@@ -675,7 +675,7 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
       { symbol: "UNI", name: "Uniswap", decimals: 18,
         total_supply_raw: nil, total_supply_formatted: nil,
         price_usd: 6.5, price_observed_at: 90.seconds.ago,
-        market_cap_usd: nil, issuer: nil, admin_status: [], admin_roles: [] }
+        market_cap_usd: nil, issuer: nil }
     end
     fake_adapter.define_singleton_method(:template_partial) { "protocol_adapters/generic_erc20" }
 
@@ -1098,6 +1098,135 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match "Fetching the latest governance events in the background", response.body
     assert_match "Backfilling the timeline now", response.body
+  end
+
+  # ---------- Admin & Risk section ----------
+
+  test "show HTML renders Admin & Risk section with detected controls and proxy badge" do
+    contract = contracts(:uni_token)
+    profile = AdminRisk::Profiler::Result.new(
+      contract: contract.address,
+      chain: "eth",
+      summary: "Detected pausable and ownable controls from the verified ABI.",
+      risk_flags: [ "pausable", "ownable" ],
+      controls: [
+        { key: "owner", label: "Owner", type: "address",
+          value: "0x1111111111111111111111111111111111111111", source: "view" },
+        { key: "implementation", label: "Implementation", type: "address",
+          value: "0x2222222222222222222222222222222222222222", source: "proxy" }
+      ],
+      recent_governance: { count: 0 },
+      evidence: [],
+      warnings: [ "Upgradeability inferred from ABI/events; proxy storage resolution may be incomplete." ],
+      block_number: 24_500_000,
+      fetched_at: Time.current,
+      error: nil
+    )
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(AdminRisk::Profiler, :call, ->(**_) { profile }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    assert_response :success
+    assert_match "Who can change the rules?", response.body
+    assert_match "Detected pausable and ownable controls", response.body
+    assert_match "Pausable", response.body
+    assert_match "Ownable",  response.body
+    assert_match "0x1111111111111111111111111111111111111111", response.body
+    assert_match ">proxy<", response.body, "proxy-sourced controls must be tagged"
+    assert_match "Upgradeability inferred", response.body
+    assert_match "Block #24,500,000", response.body
+  end
+
+  test "show HTML omits the Admin & Risk content paths when profile is neutral" do
+    contract = contracts(:uni_token)
+    profile = AdminRisk::Profiler::Result.new(
+      contract: contract.address, chain: "eth",
+      summary: "No admin risk controls detected from the verified ABI.",
+      risk_flags: [], controls: [], recent_governance: { count: 0 },
+      evidence: [], warnings: [], block_number: nil, fetched_at: nil, error: nil
+    )
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(AdminRisk::Profiler, :call, ->(**_) { profile }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    assert_response :success
+    # Section header still renders so the page promises a consistent shape,
+    # but no flag pills / control table / warnings list appear.
+    assert_match "Who can change the rules?", response.body
+    assert_match "No admin risk controls detected", response.body
+    refute_match "Current controls", response.body
+  end
+
+  test "show HTML falls back gracefully when AdminRisk::Profiler raises" do
+    # Controller's rescue must convert the crash into the canned "Could not
+    # build admin risk profile." Result. Otherwise a Profiler bug would 500
+    # the whole contract page.
+    contract = contracts(:uni_token)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(AdminRisk::Profiler, :call, ->(**_) { raise "profiler boom" }) do
+        get contract_path(chain: "eth", address: contract.address)
+      end
+    end
+
+    assert_response :success
+    assert_select "h1", contract.name
+    assert_match "Could not build admin risk profile", response.body
+    assert_match "profiler boom", response.body
+  end
+
+  test "contract page .md includes the Admin & Risk section with detected flags and controls" do
+    contract = contracts(:uni_token)
+    profile = AdminRisk::Profiler::Result.new(
+      contract: contract.address, chain: "eth",
+      summary: "Detected pausable and ownable controls from the verified ABI.",
+      risk_flags: [ "pausable", "ownable" ],
+      controls: [
+        { key: "owner", label: "Owner", type: "address",
+          value: "0xAAAA000000000000000000000000000000000000", source: "view" },
+        { key: "paused", label: "Paused", type: "bool", value: false, source: "view" }
+      ],
+      recent_governance: { count: 2, latest_event: "OwnershipTransferred", latest_block: 24_999_900 },
+      evidence: [], warnings: [], block_number: 25_000_000, fetched_at: Time.current, error: nil
+    )
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(AdminRisk::Profiler, :call, ->(**_) { profile }) do
+        stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity_result(contract) }) do
+          get "/eth/#{contract.address}.md"
+        end
+      end
+    end
+
+    assert_response :success
+    assert_match "## Admin & Risk", response.body
+    assert_match "Detected pausable and ownable controls", response.body
+    assert_match "**Detected controls:** Pausable, Ownable", response.body
+    assert_match "Owner: `0xaaaa000000000000000000000000000000000000`", response.body
+    assert_match "Paused: `false`", response.body
+    assert_match "**Governance events loaded:** 2", response.body
+    assert_match "latest: `OwnershipTransferred`", response.body
+  end
+
+  test "contract page .md surfaces 'Could not build admin risk profile' on Profiler error" do
+    contract = contracts(:uni_token)
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(AdminRisk::Profiler, :call, ->(**_) { raise "md profiler boom" }) do
+        stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity_result(contract) }) do
+          get "/eth/#{contract.address}.md"
+        end
+      end
+    end
+
+    assert_response :success
+    assert_match "Could not build admin risk profile: md profiler boom", response.body
   end
 
   test "show does NOT enqueue refresh job when contract is already fresh" do

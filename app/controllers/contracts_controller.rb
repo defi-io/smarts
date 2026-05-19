@@ -25,6 +25,7 @@ class ContractsController < ApplicationController
     @classification = classify(@contract)
     @activity = load_recent_events(@contract)
     @governance = load_governance_timeline(@contract)
+    @admin_risk = load_admin_risk_profile(@contract)
 
     enqueue_ai_enrichment_if_needed(@contract)
   rescue EtherscanClient::NotVerifiedError
@@ -133,6 +134,25 @@ class ContractsController < ApplicationController
       events: contract.governance_events.newest_first.to_a,
       error: e.message,
       refreshing: false
+    )
+  end
+
+  def load_admin_risk_profile(contract)
+    AdminRisk::Profiler.call(contract: contract)
+  rescue => e
+    Rails.logger.warn("[ContractsController] admin risk profile failed: #{e.class}: #{e.message}")
+    AdminRisk::Profiler::Result.new(
+      contract: contract.address,
+      chain: contract.chain.slug,
+      summary: "Could not build admin risk profile.",
+      risk_flags: [],
+      controls: [],
+      recent_governance: { count: contract.governance_events.count },
+      evidence: [],
+      warnings: [],
+      block_number: nil,
+      fetched_at: nil,
+      error: e.message
     )
   end
 

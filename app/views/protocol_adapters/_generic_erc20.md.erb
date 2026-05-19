@@ -27,26 +27,4 @@ _Read at chain block #<%= data[:block_number] %><% if data[:fetched_at] %>, <%= 
 <% if data[:issuer] %>
 - **Issuer:** <%= data[:issuer][:name] %><% if data[:issuer][:url] %> — <<%= data[:issuer][:url] %>><% end %>
 <% end %>
-<% if data[:admin_status].present? %>
-
-### Admin status
-<% data[:admin_status].each do |s| %>
-<% if s[:value] == true && s[:severity] == :critical %>
-- **<%= s[:label] %>:** true ⚠ CRITICAL
-<% elsif [ true, false ].include?(s[:value]) %>
-- **<%= s[:label] %>:** <%= s[:value] %>
-<% elsif s[:value].is_a?(String) %>
-- **<%= s[:label] %>:** `<%= s[:value] %>`<% if s[:value].downcase == ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS %> (none)<% end %>
-<% end %>
-<% end %>
-<% end %>
-<% if data[:admin_roles].present? %>
-
-### Admin roles
-<% data[:admin_roles].each do |r| %>
-<% addr = r[:value].to_s.downcase %>
-<% is_zero = (addr == ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS) %>
-- **<%= r[:label] %>:** `<%= addr %>`<% if is_zero %> (none)<% end %>
-<% end %>
-<% end %>
 <% end %>
