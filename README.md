@@ -21,10 +21,22 @@ Cursor / Windsurf / Cline / Claude Desktop: see <https://mcp.smarts.md> for the 
 | tool | what |
 |---|---|
 | `get_contract_info`    | metadata + classification + adapter tag |
+| `get_contract_source`  | source index, file content, or grep across verified Solidity source |
 | `get_erc20_info`       | supply, price, market cap, issuer, admin controls |
+| `get_governance_timeline` | privileged-event history: role changes, upgrades, pauses, blacklisting, minter config |
+| `get_recent_events`    | recent decoded contract events, optionally filtered by event name |
 | `get_uniswap_v3_pool`  | pair, fee, price, liquidity, tick, TVL |
 | `inspect_address`      | EOA vs contract, balance, nonce, reverse ENS |
 | `read_contract_state`  | any view/pure function with args |
+
+## Curated shortcuts
+
+Use slugs anywhere a tool accepts `slug`; Smarts resolves them to chain + address.
+
+- Stablecoins: `usdc-eth`, `usdt-eth`, `dai-eth`, `usde-eth`, `susde-eth`, `pyusd-eth`, `usdc-base`, `usdc-arbitrum`, `usdc-optimism`, `usdc-polygon`
+- Governance tokens: `uni-eth`, `aave-eth`, `comp-eth`, `mkr-eth`, `sky-eth`, `ldo-eth`, `arb-arbitrum`, `op-optimism`, `aero-base`
+- Protocol contracts: `univ3-factory-eth`, `univ3-swaprouter-eth`, `aavev3-pool-eth`, `aavev3-pool-base`, `aavev3-pool-arbitrum`
+- Pools: `univ3-usdc-weth-eth`, `univ3-usdt-weth-eth`, `univ3-wbtc-weth-eth`, `univ3-dai-usdc-eth`
 
 ## Ask your AI
 

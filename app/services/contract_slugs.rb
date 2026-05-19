@@ -18,28 +18,63 @@ module ContractSlugs
   # it to appear in any derived iteration (tests, admin tools, etc.). For
   # aliased addresses, legacy slug first, current canonical last.
   MAP = {
-    # Stablecoins
+    # Stablecoins & wrapped assets — high-signal for issuer/admin-risk docs.
     "usdc-eth"       => [ "eth",      "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" ],
     "usdt-eth"       => [ "eth",      "0xdac17f958d2ee523a2206206994597c13d831ec7" ],
     "dai-eth"        => [ "eth",      "0x6b175474e89094c44da98b954eedeac495271d0f" ],
-
-    # DEX & Wrapped
+    "usde-eth"       => [ "eth",      "0x4c9edd5852cd905f086c759e8383e09bff1e68b3" ],
+    "susde-eth"      => [ "eth",      "0x9d39a5de30e57443bff2a8307a4256c8797a3497" ],
+    "usds-eth"       => [ "eth",      "0xdc035d45d973e3ec169d2276ddab16f1e407384f" ],
+    "pyusd-eth"      => [ "eth",      "0x6c3ea9036406852006290770bedfcaba0e23a0e8" ],
+    "frax-eth"       => [ "eth",      "0x853d955acef822db058eb8505911ed77f175b99e" ],
+    "lusd-eth"       => [ "eth",      "0x5f98805a4e8be255a32880fdec7f6728c6568ba0" ],
     "weth-eth"       => [ "eth",      "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2" ],
     "wbtc-eth"       => [ "eth",      "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599" ],
 
-    # Governance
+    # Multi-chain stablecoins. Prefer native issuer contracts over bridged
+    # variants where both exist (e.g. native USDC, not USDC.e).
+    "usdc-base"      => [ "base",     "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" ],
+    "usdc-arbitrum"  => [ "arbitrum", "0xaf88d065e77c8cc2239327c5edb3a432268e5831" ],
+    "usdc-optimism"  => [ "optimism", "0x0b2c639c533813f4aa9d7837caf62653d097ff85" ],
+    "usdc-polygon"   => [ "polygon",  "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359" ],
+    "usdt-arbitrum"  => [ "arbitrum", "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9" ],
+    "usdt-optimism"  => [ "optimism", "0x94b008aa00579c1307b0ef2c499ad98a8ce58e58" ],
+    "usdt-polygon"   => [ "polygon",  "0xc2132d05d31c914a87c6611c10748aeb04b58e8f" ],
+
+    # Governance / protocol tokens.
     "uni-eth"        => [ "eth",      "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984" ],
     "link-eth"       => [ "eth",      "0x514910771af9ca656af840dff83e8264ecf986ca" ],
     "aave-eth"       => [ "eth",      "0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9" ],
+    "comp-eth"       => [ "eth",      "0xc00e94cb662c3520282e6f5717214004a7f26888" ],
+    "mkr-eth"        => [ "eth",      "0x9f8f72aa9304c8b593d555f12ef6589cc3a579a2" ],
+    "sky-eth"        => [ "eth",      "0x56072c95faa701256059aa122697b133aded9279" ],
+    "ldo-eth"        => [ "eth",      "0x5a98fcbea516cf06857215779fd812ca3bef1b32" ],
+    "crv-eth"        => [ "eth",      "0xd533a949740bb3306d119cc777fa900ba034cd52" ],
+    "bal-eth"        => [ "eth",      "0xba100000625a3754423978a60c9317c58a424e3d" ],
+    "ens-eth"        => [ "eth",      "0xc18360217d8f7ab5e7c516566761ea12ce7f9d72" ],
+    "arb-arbitrum"   => [ "arbitrum", "0x912ce59144191c1204e64559fe8253a0e49e6548" ],
+    "op-optimism"    => [ "optimism", "0x4200000000000000000000000000000000000042" ],
+    "aero-base"      => [ "base",     "0x940181a94a35a4569e4529a3cdfb74e38fd98631" ],
 
-    # DEX pools (compound slug: protocol-token0-token1-chain).
+    # Core protocol contracts. These are MCP shortcut targets, not ERC-20s.
+    "univ3-factory-eth"          => [ "eth", "0x1f98431c8ad98523631ae4a59f267346ea31f984" ],
+    "univ3-swaprouter-eth"       => [ "eth", "0x68b3465833fb72a70ecdf485e0e4c7bd8665fc45" ],
+    "univ3-nftmanager-eth"       => [ "eth", "0xc36442b4a4522e871399cd717abdd847ab11fe88" ],
+    "univ3-quoter-eth"           => [ "eth", "0x61ffe014ba17989e743c5f6cb21bf9697530b21e" ],
+    "aavev3-pool-eth"            => [ "eth", "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2" ],
+    "aavev3-addresses-provider-eth" => [ "eth", "0x2f39d218133afab8f2b819b1066c7e434ad94e9e" ],
+    "aavev3-pool-base"           => [ "base", "0xa238dd80c259a72e81d7e4664a9801593f98d1c5" ],
+    "aavev3-pool-arbitrum"       => [ "arbitrum", "0x794a61358d6845594f94dc1db02a252b5b4814ad" ],
+    "aavev3-pool-optimism"       => [ "optimism", "0x794a61358d6845594f94dc1db02a252b5b4814ad" ],
+    "aavev3-pool-polygon"        => [ "polygon", "0x794a61358d6845594f94dc1db02a252b5b4814ad" ],
+
+    # High-signal Uniswap V3 pools (compound slug: protocol-token0-token1-chain).
     # If/when we add same-pair-different-fee pools, append fee tier:
     # "univ3-usdc-weth-005-eth" (0.05%), "univ3-usdc-weth-030-eth" (0.3%).
     "univ3-usdc-weth-eth" => [ "eth", "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640" ],
-
-    # Multi-chain
-    "usdc-base"      => [ "base",     "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913" ],
-    "usdc-arbitrum"  => [ "arbitrum", "0xaf88d065e77c8cc2239327c5edb3a432268e5831" ],
+    "univ3-usdt-weth-eth" => [ "eth", "0x11b815efb8f581194ae79006d24e0d814b7697f6" ],
+    "univ3-wbtc-weth-eth" => [ "eth", "0xcbcdf9626bc03e24f779434178a73a0b4bad62ed" ],
+    "univ3-dai-usdc-eth"  => [ "eth", "0x5777d92f208679db4b9778590fa3cab3ac9e2168" ],
 
     # Polygon WMATIC → WPOL rebrand (2024). `wmatic-polygon` listed first as
     # a legacy alias so existing inbound links and AI-agent configs keep

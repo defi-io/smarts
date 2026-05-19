@@ -120,6 +120,24 @@
     </div>
   </section>
 
+  <%# ---------- Curated shortcuts ---------- %>
+  <section class="w-full max-w-5xl px-6 pb-14">
+    <h2 class="text-xs uppercase tracking-wider text-gray-400 mb-4 font-semibold">Curated shortcuts</h2>
+
+    <p class="text-sm text-gray-400 mb-4 max-w-3xl">
+      Use slugs anywhere a tool accepts <code class="text-gray-300">slug</code>. They resolve to curated blue-chip contracts without copying chain IDs or hex addresses.
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <% @shortcuts.each do |shortcut| %>
+        <div class="p-4 bg-gray-900/60 border border-gray-800 rounded-xl">
+          <code class="text-white font-mono text-sm"><%= shortcut[:slug] %></code>
+          <p class="text-xs text-gray-500 mt-2 leading-snug"><%= shortcut[:blurb] %></p>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
   <%# ---------- Footer ---------- %>
   <footer class="w-full max-w-5xl px-6 pb-8 flex flex-wrap items-center justify-between gap-4 text-xs text-gray-500">
     <div>

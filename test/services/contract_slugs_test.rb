@@ -36,6 +36,10 @@ class ContractSlugsTest < ActiveSupport::TestCase
   # Structural guards — these catch typos + drift when SLUGS.yml / constants
   # are edited later.
 
+  test "registry has enough curated blue-chip shortcuts for v1" do
+    assert_operator ContractSlugs::MAP.size, :>=, 45
+  end
+
   test "every slug address is lowercase 0x + 40 hex" do
     ContractSlugs::MAP.each do |slug, (_chain, addr)|
       assert_match(/\A0x[0-9a-f]{40}\z/, addr, "slug #{slug} has malformed address #{addr}")
@@ -112,5 +116,23 @@ class ContractSlugsTest < ActiveSupport::TestCase
     chain, address = ContractSlugs.resolve("univ3-usdc-weth-eth")
     assert_equal "eth", chain
     assert_equal "0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640", address
+  end
+
+  test "curated stablecoin slugs include native multi-chain issuer contracts" do
+    assert_equal [ "optimism", "0x0b2c639c533813f4aa9d7837caf62653d097ff85" ],
+                 ContractSlugs.resolve("usdc-optimism")
+    assert_equal [ "polygon", "0x3c499c542cef5e3811e1192ce70d8cc03d5c3359" ],
+                 ContractSlugs.resolve("usdc-polygon")
+    assert_equal [ "arbitrum", "0xfd086bc7cd5c481dcc9c85ebe478a1c0b69fcbb9" ],
+                 ContractSlugs.resolve("usdt-arbitrum")
+  end
+
+  test "curated protocol slugs include core Uniswap and Aave contracts" do
+    assert_equal [ "eth", "0x1f98431c8ad98523631ae4a59f267346ea31f984" ],
+                 ContractSlugs.resolve("univ3-factory-eth")
+    assert_equal [ "eth", "0x87870bca3f3fd6335c3f4ce8392d69350b4fa4e2" ],
+                 ContractSlugs.resolve("aavev3-pool-eth")
+    assert_equal [ "base", "0xa238dd80c259a72e81d7e4664a9801593f98d1c5" ],
+                 ContractSlugs.resolve("aavev3-pool-base")
   end
 end
