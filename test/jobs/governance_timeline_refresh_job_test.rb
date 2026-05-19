@@ -44,7 +44,7 @@ class GovernanceTimelineRefreshJobTest < ActiveJob::TestCase
     refute GovernanceTimelineRefreshJob.fresh?(@contract)
 
     stub_class_method(GovernanceEvents::TimelineFetcher, :call, ->(**_) { fake_result }) do
-      stub_class_method(Turbo::StreamsChannel, :broadcast_refresh_to, ->(*_, **_) {}) do
+      stub_class_method(Turbo::StreamsChannel, :broadcast_refresh_to, ->(*_, **_) { }) do
         GovernanceTimelineRefreshJob.perform_now(@contract.id)
       end
     end

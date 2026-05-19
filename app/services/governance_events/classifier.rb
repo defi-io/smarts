@@ -110,11 +110,11 @@ module GovernanceEvents
       def generic_summary(name, args)
         parts = args.map do |key, value|
           formatted = case value
-                      when nil then "—"
-                      when String then address?(value) ? addr(value) : value
-                      when Integer then num(value)
-                      else value.to_s
-                      end
+          when nil then "—"
+          when String then address?(value) ? addr(value) : value
+          when Integer then num(value)
+          else value.to_s
+          end
           "#{key}=#{formatted}"
         end
         parts.any? ? "#{name}(#{parts.join(', ')})" : name
