@@ -2,7 +2,7 @@
 
 class GetErc20InfoTool < ApplicationTool
   tool_name "get_erc20_info"
-  description "Get live state of an ERC-20 token: supply (raw + human-formatted), price, market cap, issuer, plus centralized-stablecoin admin controls (paused status, owner / masterMinter / pauser / blacklister / rescuer) when the contract exposes them. Accepts slug or chain+address."
+  description "Get live state of an ERC-20 token: supply (raw + human-formatted), price, market cap, and issuer. For admin / privilege controls (paused, owner, mintable, upgradeable, etc.) and recent governance activity, the contract page itself exposes an Admin & Risk section — those are not returned here. Accepts slug or chain+address."
 
   input_schema(
     properties: {
@@ -40,8 +40,6 @@ class GetErc20InfoTool < ApplicationTool
         price_observed_at: data[:price_observed_at]&.utc&.iso8601,
         market_cap_usd: data[:market_cap_usd],
         issuer: data[:issuer],
-        admin_status: data[:admin_status],
-        admin_roles: data[:admin_roles],
         block_number: data[:block_number],
         fetched_at: data[:fetched_at]&.utc&.iso8601
       }

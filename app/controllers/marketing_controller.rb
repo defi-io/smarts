@@ -74,6 +74,14 @@ class MarketingController < ApplicationController
     { q: "Call balanceOf(0xabc…) on USDC.",                     tool: "read_contract_state" }
   ].freeze
 
+  MCP_SHORTCUTS = [
+    { slug: "usdc-eth", blurb: "Ethereum USDC — stablecoin admin controls and governance timeline." },
+    { slug: "usdt-arbitrum", blurb: "Arbitrum USDT — multi-chain stablecoin lookup." },
+    { slug: "univ3-usdc-weth-eth", blurb: "Deep Uniswap V3 USDC/WETH pool on Ethereum." },
+    { slug: "aavev3-pool-base", blurb: "Aave V3 Pool proxy on Base." },
+    { slug: "univ3-factory-eth", blurb: "Canonical Uniswap V3 factory on Ethereum." }
+  ].freeze
+
   def home
     if params[:q].present? && params[:q].match?(%r{\A[a-z]+/0x[0-9a-fA-F]{40}\z})
       redirect_to "/#{params[:q]}", status: :moved_permanently
@@ -86,6 +94,7 @@ class MarketingController < ApplicationController
     @endpoint_url   = MCP_ENDPOINT_URL
     @tools          = MCP_TOOLS
     @example_queries = MCP_EXAMPLE_QUERIES
+    @shortcuts      = MCP_SHORTCUTS
   end
 
   # Forward-looking discovery manifest. MCP spec hasn't formalized a

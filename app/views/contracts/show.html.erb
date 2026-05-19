@@ -57,6 +57,8 @@
     <%= render @protocol_adapter.template_partial, adapter: @protocol_adapter %>
   <% end %>
 
+  <%= render "contracts/admin_risk" %>
+
   <% activity_selected = params[:event_name].present? %>
   <% governance_selected = params[:gov_category].present? %>
   <% docs_selected = !activity_selected && !governance_selected %>

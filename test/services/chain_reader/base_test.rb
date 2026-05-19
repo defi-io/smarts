@@ -155,6 +155,90 @@ class ChainReader::BaseTest < ActiveSupport::TestCase
     end
   end
 
+  # ---------- eth_get_logs ----------
+
+  test "eth_get_logs hex-encodes integer from/to blocks and forwards address" do
+    seen_filter = nil
+    fake = Class.new do
+      define_method(:eth_get_logs) do |filter|
+        seen_filter = filter
+        { "jsonrpc" => "2.0", "id" => 1, "result" => [] }
+      end
+    end.new
+
+    stub_class_method(ChainReader::Base, :client_for, ->(_chain) { fake }) do
+      ChainReader::Base.eth_get_logs(@chain,
+        address: "0xabc", topic0: "0xdead", from_block: 100, to_block: 200)
+    end
+
+    assert_equal "0xabc",  seen_filter[:address]
+    assert_equal "0x64",   seen_filter[:fromBlock]
+    assert_equal "0xc8",   seen_filter[:toBlock]
+    assert_equal [ "0xdead" ], seen_filter[:topics]
+  end
+
+  test "eth_get_logs omits topics when topic0 is nil" do
+    seen_filter = nil
+    fake = Class.new do
+      define_method(:eth_get_logs) do |filter|
+        seen_filter = filter
+        { "result" => [] }
+      end
+    end.new
+
+    stub_class_method(ChainReader::Base, :client_for, ->(_chain) { fake }) do
+      ChainReader::Base.eth_get_logs(@chain, address: "0xabc", from_block: 0, to_block: 1)
+    end
+
+    refute seen_filter.key?(:topics), "topics filter must be absent when topic0 is nil"
+  end
+
+  test "eth_get_logs passes 'latest' string toBlock through unchanged" do
+    seen_filter = nil
+    fake = Class.new do
+      define_method(:eth_get_logs) do |filter|
+        seen_filter = filter
+        { "result" => [] }
+      end
+    end.new
+
+    stub_class_method(ChainReader::Base, :client_for, ->(_chain) { fake }) do
+      ChainReader::Base.eth_get_logs(@chain, address: "0xabc", to_block: "latest")
+    end
+
+    assert_equal "latest", seen_filter[:toBlock]
+  end
+
+  test "eth_get_logs extracts log array from JSON-RPC response hash" do
+    log = { "address" => "0xabc", "topics" => [ "0xdead" ], "data" => "0x" }
+    fake = FakeRpcClient.new({ "result" => [ log ] })
+
+    stub_class_method(ChainReader::Base, :client_for, ->(_chain) { fake }) do
+      out = ChainReader::Base.eth_get_logs(@chain, address: "0xabc")
+      assert_equal [ log ], out
+    end
+  end
+
+  test "eth_get_logs raises RpcError when JSON-RPC reports error" do
+    fake = FakeRpcClient.new({ "error" => { "code" => -32005, "message" => "limit exceeded" } })
+
+    stub_class_method(ChainReader::Base, :client_for, ->(_chain) { fake }) do
+      err = assert_raises(ChainReader::Base::RpcError) do
+        ChainReader::Base.eth_get_logs(@chain, address: "0xabc")
+      end
+      assert_match(/limit exceeded/, err.message)
+    end
+  end
+
+  test "eth_get_logs accepts raw array response (non-hash client)" do
+    log = { "address" => "0xabc" }
+    fake = FakeRpcClient.new([ log ])
+
+    stub_class_method(ChainReader::Base, :client_for, ->(_chain) { fake }) do
+      assert_equal [ log ], ChainReader::Base.eth_get_logs(@chain, address: "0xabc")
+    end
+  end
+
   class FakeRpcClient
     def initialize(response)
       @response = response
@@ -165,6 +249,10 @@ class ChainReader::BaseTest < ActiveSupport::TestCase
     end
 
     def eth_block_number
+      @response
+    end
+
+    def eth_get_logs(_filter)
       @response
     end
   end

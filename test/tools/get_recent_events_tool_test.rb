@@ -264,15 +264,22 @@ class GetRecentEventsToolTest < ActiveSupport::TestCase
     assert_equal GetRecentEventsTool::MAX_LIMIT, result[:count]
   end
 
-  test "surfaces Etherscan errors as a top-level error" do
+  test "surfaces fetch errors as a top-level error when both Etherscan and RPC fail" do
+    # Etherscan failure → fetcher transparently falls back to RPC `eth_getLogs`.
+    # We stub RPC to also fail so the user-facing top-level error path is
+    # exercised. The message comes from the RPC error since it's the last
+    # thing tried before giving up.
     stub_request(:get, /api\.etherscan\.io/).to_return(
       status: 200,
       body: { status: "0", message: "NOTOK", result: "Invalid API Key" }.to_json,
       headers: { "Content-Type" => "application/json" }
     )
 
-    result = with_eth_block_number { @tool.payload(chain: "eth", address: @contract.address) }
-    assert_match(/Etherscan:/, result[:error])
+    stub_class_method(ChainReader::Base, :eth_get_logs,
+      ->(_chain, **_) { raise ChainReader::Base::RpcError, "rpc down" }) do
+      result = with_eth_block_number { @tool.payload(chain: "eth", address: @contract.address) }
+      assert_match(/rpc down/, result[:error])
+    end
   end
 
   # ──────────────────────────────────────────────

@@ -95,19 +95,79 @@ class GovernanceEvents::TimelineFetcherTest < ActiveSupport::TestCase
       block_number: 100, tx_hash: "0xexisting", log_index: 0,
       event_name: "Pause", category: "lifecycle", summary: "Contract paused"
     )
-    stub_request(:get, /api\.etherscan\.io/).to_return(
-      status: 200,
-      body: { status: "0", message: "NOTOK", result: "Invalid API Key" }.to_json,
-      headers: { "Content-Type" => "application/json" }
-    )
+    stub_etherscan_error
 
-    result = with_eth_block_number { GovernanceEvents::TimelineFetcher.call(contract: @contract) }
+    # Both Etherscan AND the RPC fallback fail — surfaces as partial scan
+    # error with the RPC failure message attached to each event type.
+    result = stub_rpc_logs(->(*_, **_) { raise ChainReader::Base::RpcError, "rpc down" }) do
+      with_eth_block_number { GovernanceEvents::TimelineFetcher.call(contract: @contract) }
+    end
 
     refute result.success?
     assert_match(/partial scan:/, result.error)
     assert_match(/OwnershipTransferred/, result.error)
     assert_equal 1, result.events.length          # cached event still present
     assert_equal @latest_block, @contract.reload.governance_last_scanned_block
+  end
+
+  test "falls back to RPC eth_getLogs on page 1 when Etherscan errors" do
+    # Etherscan's free plan rejects logs on chains like Polygon. The fetcher
+    # must transparently fall back to RPC `eth_getLogs` so governance history
+    # still backfills (timestamps will be nil — callers tolerate that).
+    stub_etherscan_error
+
+    rpc_call = ->(_chain, topic0:, **_) do
+      next [] unless topic0 == ownership_transferred_topic0
+      [ ownership_transferred_log(block_number: 19_000_500) ]
+    end
+
+    result = stub_rpc_logs(rpc_call) do
+      with_eth_block_number { GovernanceEvents::TimelineFetcher.call(contract: @contract) }
+    end
+
+    assert result.success?, result.error
+    assert_equal 1, result.newly_fetched
+    assert_equal "OwnershipTransferred", result.events.first.event_name
+    assert_equal @latest_block, @contract.reload.governance_last_scanned_block
+  end
+
+  test "does NOT fall back to RPC on page>1 to avoid silent duplicate inserts" do
+    # RPC `eth_getLogs` has no pagination. If we silently fell back on page 2
+    # we'd re-fetch page-1 logs from the start and double-insert (bypassing
+    # nothing — GovernanceEvent has a unique index, but the partial-scan
+    # error message would lie about what actually happened). The safer
+    # contract: page>1 Etherscan error MUST propagate.
+    page1 = Array.new(1000) do |i|
+      ownership_transferred_log(block_number: 19_000_000 + i, tx_hash: "0xtx#{i}")
+    end
+
+    stub_request(:get, /api\.etherscan\.io/).to_return do |req|
+      if req.uri.query_values["topic0"] == ownership_transferred_topic0
+        case req.uri.query_values["page"]
+        when "1" then logs_response(page1)
+        when "2" then etherscan_error_response
+        else logs_response([])
+        end
+      else
+        logs_response([])
+      end
+    end
+
+    rpc_called = 0
+    rpc_call = ->(*_, **_) { rpc_called += 1; [] }
+
+    result = stub_rpc_logs(rpc_call) do
+      with_eth_block_number { GovernanceEvents::TimelineFetcher.call(contract: @contract) }
+    end
+
+    assert_equal 0, rpc_called, "RPC fallback must NOT run for page>1"
+    refute result.success?
+    assert_match(/partial scan:/, result.error)
+    assert_match(/OwnershipTransferred/, result.error)
+    # Records persisted inside the loop survive the abort. newly_fetched
+    # under-reports (it only credits event types that completed cleanly),
+    # but result.events reads from the DB and reflects the truth.
+    assert_equal 1000, result.events.length
   end
 
   test "paginates within a window when results hit PAGE_SIZE" do
@@ -198,5 +258,25 @@ class GovernanceEvents::TimelineFetcherTest < ActiveSupport::TestCase
 
   def with_eth_block_number(block_number = @latest_block, &block)
     stub_class_method(ChainReader::Base, :eth_block_number, ->(_chain) { block_number }, &block)
+  end
+
+  def stub_rpc_logs(impl, &block)
+    stub_class_method(ChainReader::Base, :eth_get_logs, impl, &block)
+  end
+
+  def stub_etherscan_error
+    stub_request(:get, /api\.etherscan\.io/).to_return(
+      status: 200,
+      body: { status: "0", message: "NOTOK", result: "Invalid API Key" }.to_json,
+      headers: { "Content-Type" => "application/json" }
+    )
+  end
+
+  def etherscan_error_response
+    {
+      status: 200,
+      body: { status: "0", message: "NOTOK", result: "Invalid API Key" }.to_json,
+      headers: { "Content-Type" => "application/json" }
+    }
   end
 end

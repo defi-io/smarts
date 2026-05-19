@@ -518,4 +518,45 @@ class ContractsHelperTest < ActionView::TestCase
     assert_equal "2h",  time_ago_short(2.hours.ago - 1.second)
     assert_equal "now", time_ago_short(nil)
   end
+
+  # ---------- admin_risk_flag_label / _badge_class / _value ----------
+
+  test "admin_risk_flag_label titlecases and unsnakes" do
+    assert_equal "Upgradeable", admin_risk_flag_label("upgradeable")
+    assert_equal "Role Based",  admin_risk_flag_label("role_based")
+    assert_equal "Blacklistable", admin_risk_flag_label(:blacklistable)
+  end
+
+  test "admin_risk_badge_class maps each flag to its DaisyUI semantic class" do
+    assert_equal "badge-warning", admin_risk_badge_class("upgradeable")
+    assert_equal "badge-info",    admin_risk_badge_class("mintable")
+    assert_equal "badge-error",   admin_risk_badge_class("pausable")
+    assert_equal "badge-error",   admin_risk_badge_class("blacklistable")
+    assert_equal "badge-error",   admin_risk_badge_class("freezable")
+    assert_equal "badge-outline", admin_risk_badge_class("ownable")
+    assert_equal "badge-outline", admin_risk_badge_class("role_based")
+    assert_equal "badge-outline", admin_risk_badge_class("unknown_capability")
+  end
+
+  test "admin_risk_value formats booleans as literal true/false strings" do
+    assert_equal "true",  admin_risk_value({ type: "bool", value: true })
+    assert_equal "false", admin_risk_value({ type: "bool", value: false })
+    # nil bool — current contract is to show "false" so the UI never renders
+    # an empty cell next to a control label.
+    assert_equal "false", admin_risk_value({ type: "bool", value: nil })
+  end
+
+  test "admin_risk_value lowercases addresses for canonical rendering" do
+    assert_equal "0xdeadbeef", admin_risk_value({ type: "address", value: "0xDeAdBeEf" })
+    # nil address: must not raise — render empty string so the row is still
+    # safe to wrap in a <dd> tag.
+    assert_equal "", admin_risk_value({ type: "address", value: nil })
+  end
+
+  test "admin_risk_value renders other types via to_s" do
+    assert_equal "0", admin_risk_value({ type: "uint256", value: 0 })
+    assert_equal "1234567890123456789012345678901234567890",
+                 admin_risk_value({ type: "uint256", value: 1234567890123456789012345678901234567890 })
+    assert_equal "", admin_risk_value({ type: "string", value: nil })
+  end
 end

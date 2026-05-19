@@ -48,6 +48,26 @@ module ChainReader
         "#{fn_abi['name']}(#{types})"
       end
 
+      # RPC eth_getLogs — works on any chain with an RPC URL. Returns an
+      # array of log hashes in the same shape as Etherscan's getLogs
+      # (camelCase keys, hex-encoded values) so EventDecoder can consume
+      # them without changes. Note: RPC logs lack `timeStamp`; callers
+      # must tolerate nil timestamps.
+      def eth_get_logs(chain, address:, topic0: nil, from_block: 0, to_block: "latest")
+        filter = {
+          address: address,
+          fromBlock: "0x#{from_block.to_i.to_s(16)}",
+          toBlock: to_block.is_a?(Integer) ? "0x#{to_block.to_s(16)}" : to_block
+        }
+        filter[:topics] = [ topic0 ] if topic0
+
+        raw = client_for(chain).eth_get_logs(filter)
+        result = raw.is_a?(Hash) ? raw["result"] : raw
+        raise RpcError, raw.dig("error", "message") || "eth_getLogs failed" if raw.is_a?(Hash) && raw["error"]
+
+        Array(result)
+      end
+
       def hex_to_bytes(hex)
         [ hex.to_s.sub(/\A0x/, "") ].pack("H*")
       end

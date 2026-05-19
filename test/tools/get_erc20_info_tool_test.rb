@@ -12,16 +12,15 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
   end
 
   def seed_usdc_like_contract
+    # ABI is now just the 6 ERC-20 selectors — admin functions moved to
+    # AdminRisk::Profiler and are no longer probed here.
     abi = %w[name symbol decimals totalSupply balanceOf(address) transfer(address,uint256)
-             transferFrom(address,address,uint256) approve(address,uint256) allowance(address,address)
-             paused owner pauser blacklister masterMinter rescuer].map do |sig|
+             transferFrom(address,address,uint256) approve(address,uint256) allowance(address,address)].map do |sig|
       name, args = sig.split("(")
       arg_types = args.to_s.chomp(")").split(",").reject(&:empty?)
       output_type = case name
       when "name", "symbol" then "string"
       when "decimals" then "uint8"
-      when "paused" then "bool"
-      when "owner", "pauser", "blacklister", "masterMinter", "rescuer" then "address"
       else "uint256"
       end
       { "type" => "function", "name" => name,
@@ -35,27 +34,21 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
                      abi: abi)
   end
 
-  def stub_multicall_for_erc20_with_admin
+  def stub_multicall_for_erc20
     ->(chain:, calls:) do
       [
         ChainReader::Multicall3Client::Result.new(success: true, values: [ "USD Coin" ]),
         ChainReader::Multicall3Client::Result.new(success: true, values: [ "USDC" ]),
         ChainReader::Multicall3Client::Result.new(success: true, values: [ 6 ]),
-        ChainReader::Multicall3Client::Result.new(success: true, values: [ 10**15 ]), # 1B USDC
-        ChainReader::Multicall3Client::Result.new(success: true, values: [ false ]), # paused
-        ChainReader::Multicall3Client::Result.new(success: true, values: [ "0x1111111111111111111111111111111111111111" ]), # owner
-        ChainReader::Multicall3Client::Result.new(success: true, values: [ "0x2222222222222222222222222222222222222222" ]), # masterMinter
-        ChainReader::Multicall3Client::Result.new(success: true, values: [ "0x3333333333333333333333333333333333333333" ]), # pauser
-        ChainReader::Multicall3Client::Result.new(success: true, values: [ "0x4444444444444444444444444444444444444444" ]), # blacklister
-        ChainReader::Multicall3Client::Result.new(success: true, values: [ ProtocolAdapters::GenericErc20Adapter::ZERO_ADDRESS ]) # rescuer
+        ChainReader::Multicall3Client::Result.new(success: true, values: [ 10**15 ]) # 1B USDC
       ]
     end
   end
 
-  test "returns full panel data for a USDC-like ERC-20" do
+  test "returns token-economics fields for a USDC-like ERC-20 (admin fields no longer included)" do
     seed_usdc_like_contract
 
-    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20_with_admin) do
+    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20) do
       stub_class_method(DefiLlamaClient, :fetch_prices,
         ->(**_) { { "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => { "price" => 1.0 } } }) do
         result = @tool.payload(chain: "eth", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
@@ -68,8 +61,10 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
         assert_equal 1.0, result[:price_usd]
         assert_kind_of Numeric, result[:market_cap_usd]
         assert_equal "Circle", result[:issuer][:name]
-        assert_equal [ "paused" ], result[:admin_status].map { |s| s[:key] }
-        assert_equal %w[owner masterMinter pauser blacklister rescuer], result[:admin_roles].map { |r| r[:key] }
+        # Admin / role fields deliberately removed from this tool — Admin & Risk
+        # lives on the contract page and (TODO) a future get_admin_risk MCP tool.
+        refute result.key?(:admin_status)
+        refute result.key?(:admin_roles)
       end
     end
   end
@@ -77,7 +72,7 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
   test "accepts slug instead of chain+address" do
     seed_usdc_like_contract
 
-    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20_with_admin) do
+    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20) do
       stub_class_method(DefiLlamaClient, :fetch_prices, ->(**_) { {} }) do
         result = @tool.payload(slug: "usdc-eth")
         assert_equal "USDC", result[:symbol]
@@ -104,7 +99,7 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
     typed_batch = ->(chain:, calls:) do
       ChainReader::Multicall3Client::Batch.new(
         block_number: 24_500_000,
-        results: stub_multicall_for_erc20_with_admin.call(chain: chain, calls: calls)
+        results: stub_multicall_for_erc20.call(chain: chain, calls: calls)
       )
     end
 
@@ -125,7 +120,7 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
     price_ts = 1_700_000_000  # 2023-11-14 22:13:20 UTC
     priced = ->(**_) { { "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => { "price" => 1.0, "timestamp" => price_ts } } }
 
-    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20_with_admin) do
+    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20) do
       stub_class_method(DefiLlamaClient, :fetch_prices, priced) do
         result = @tool.payload(chain: "eth", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
 
@@ -139,7 +134,7 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
     seed_usdc_like_contract
     no_ts = ->(**_) { { "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48" => { "price" => 1.0 } } }
 
-    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20_with_admin) do
+    stub_class_method(ChainReader::Multicall3Client, :call, stub_multicall_for_erc20) do
       stub_class_method(DefiLlamaClient, :fetch_prices, no_ts) do
         result = @tool.payload(chain: "eth", address: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48")
         assert result.key?(:price_observed_at)

@@ -219,6 +219,31 @@ module ContractsHelper
     "#{addr[0, 6]}…#{addr[-4..]}"
   end
 
+  def admin_risk_flag_label(flag)
+    flag.to_s.tr("_", " ").titleize
+  end
+
+  def admin_risk_badge_class(flag)
+    case flag.to_s
+    when "upgradeable" then "badge-warning"
+    when "mintable" then "badge-info"
+    when "pausable", "blacklistable", "freezable" then "badge-error"
+    else "badge-outline"
+    end
+  end
+
+  def admin_risk_value(control)
+    value = control[:value]
+    case control[:type]
+    when "bool"
+      value ? "true" : "false"
+    when "address"
+      value.to_s.downcase
+    else
+      value.to_s
+    end
+  end
+
   # Formats a wei amount to a human-friendly eth-units string rounded to 2dp.
   # Returns nil for nil input.
   def format_native_balance(wei, symbol)

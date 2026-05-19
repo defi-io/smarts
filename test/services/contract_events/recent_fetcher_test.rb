@@ -54,19 +54,45 @@ class ContractEvents::RecentFetcherTest < ActiveSupport::TestCase
     assert_equal "0x", event.raw_data
   end
 
-  test "surfaces Etherscan errors as result errors" do
-    stub_request(:get, /api\.etherscan\.io/).to_return(
-      status: 200,
-      body: { status: "0", message: "NOTOK", result: "Invalid API Key" }.to_json,
-      headers: { "Content-Type" => "application/json" }
-    )
+  test "surfaces RPC fallback errors as result errors when Etherscan also failed" do
+    # When Etherscan errors, the fetcher falls back to RPC `eth_getLogs`.
+    # If RPC ALSO fails, the result must surface the RPC error message so
+    # users see why their request died (instead of a silent empty result).
+    stub_etherscan_error
 
-    result = with_eth_block_number do
-      ContractEvents::RecentFetcher.call(contract: @contract)
+    stub_class_method(ChainReader::Base, :eth_get_logs,
+      ->(_chain, **_) { raise ChainReader::Base::RpcError, "rpc down" }) do
+      result = with_eth_block_number do
+        ContractEvents::RecentFetcher.call(contract: @contract)
+      end
+
+      refute result.success?
+      assert_match(/rpc down/, result.error)
     end
+  end
 
-    refute result.success?
-    assert_match(/Etherscan:/, result.error)
+  test "falls back to RPC eth_getLogs when Etherscan errors and returns decoded events" do
+    # Etherscan's free plan rejects logs on some chains (Polygon, etc.). Make
+    # sure that path doesn't silently drop activity — the fetcher must use RPC
+    # `eth_getLogs` as a fallback and still decode events through the ABI.
+    stub_etherscan_error
+
+    rpc_logs = [
+      sample_transfer_log(block_number: 19_000_001, tx_hash: "0xrpc1"),
+      sample_transfer_log(block_number: 19_000_002, tx_hash: "0xrpc2")
+    ]
+
+    stub_class_method(ChainReader::Base, :eth_get_logs, ->(_chain, **_) { rpc_logs }) do
+      result = with_eth_block_number do
+        ContractEvents::RecentFetcher.call(contract: @contract)
+      end
+
+      assert result.success?, result.error
+      assert_equal 2, result.events.length
+      assert_equal "Transfer", result.events.first.event
+      # newest-first ordering preserved on the RPC path
+      assert_equal [ 19_000_002, 19_000_001 ], result.events.map(&:block_number)
+    end
   end
 
   private
@@ -119,6 +145,14 @@ class ContractEvents::RecentFetcherTest < ActiveSupport::TestCase
     stub_request(:get, /api\.etherscan\.io/).to_return(
       status: 200,
       body: body.to_json,
+      headers: { "Content-Type" => "application/json" }
+    )
+  end
+
+  def stub_etherscan_error
+    stub_request(:get, /api\.etherscan\.io/).to_return(
+      status: 200,
+      body: { status: "0", message: "NOTOK", result: "Invalid API Key" }.to_json,
       headers: { "Content-Type" => "application/json" }
     )
   end
