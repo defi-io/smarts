@@ -1,1 +1,37 @@
-<%= render "protocol_adapters/polymarket_panel", adapter: adapter %>
+<% data = adapter.panel_data %>
+## Polymarket Conditional Tokens
+
+Outcome-token ledger (ERC-1155) on Polygon. Records every market's outcome
+shares; resolution payouts are paid out here.
+
+<% if data[:errors].present? %>
+_Some reads failed: <%= data[:errors].map { |k, v| "#{k} (#{v})" }.join(", ") %>._
+<% end %>
+
+<% if data[:resolutions].present? %>
+### Recently resolved
+
+<% data[:resolutions].each do |res| %>
+- **<%= res.market_label %>** — payouts [<%= res.payouts.join(", ") %>]<% if res.slug %> (`<%= res.slug %>`)<% end %>
+<% end %>
+<% end %>
+
+<% if data[:preparations].present? %>
+### Recently prepared (new markets)
+
+<% data[:preparations].each do |prep| %>
+- **<%= prep.market_label %>** — <%= prep.outcome_slot_count %> outcomes<% if prep.slug %> (`<%= prep.slug %>`)<% end %>
+<% end %>
+<% end %>
+
+<% if data[:redemptions].present? %>
+### Recent redemptions
+
+<% data[:redemptions].each do |redeem| %>
+- <%= redeem.redeemer %> redeemed<% if redeem.payout %> $<%= number_with_delimiter(redeem.payout.round(2)) %><% end %>
+<% end %>
+<% end %>
+
+<% if data[:resolutions].blank? && data[:preparations].blank? && data[:redemptions].blank? %>
+_No CTF activity in the last ~3h._
+<% end %>

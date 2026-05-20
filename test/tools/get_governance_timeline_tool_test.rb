@@ -59,6 +59,32 @@ class GetGovernanceTimelineToolTest < ActiveSupport::TestCase
     end
   end
 
+  test "accepts Polymarket curated slugs for admin risk queries" do
+    chain_slug, address = ContractSlugs.resolve("polymarket-ctf-exchange-v2-polygon")
+    contract = Contract.create!(
+      chain: Chain.find_by!(slug: chain_slug),
+      address: address,
+      name: "Polymarket Exchange",
+      abi: []
+    )
+    fake_result = GovernanceEvents::TimelineFetcher::Result.new(
+      contract: contract.address, chain: "polygon",
+      total_events: 0, newly_fetched: 0, latest_block: 70_000_000,
+      events: [], error: nil
+    )
+
+    stub_class_method(GovernanceEvents::TimelineFetcher, :call, ->(contract:) {
+      assert_equal address, contract.address
+      fake_result
+    }) do
+      result = @tool.payload(slug: "polymarket-ctf-exchange-v2-polygon")
+
+      assert_equal address, result[:contract]
+      assert_equal "polygon", result[:chain]
+      assert_equal 70_000_000, result[:latest_block]
+    end
+  end
+
   test "filters by category when requested" do
     role_event = make_event(event_name: "OwnershipTransferred", category: "role_change")
     upgrade_event = make_event(event_name: "Upgraded", category: "upgrade", tx_hash: "0xdef")

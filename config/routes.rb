@@ -26,6 +26,7 @@ Rails.application.routes.draw do
       GetGovernanceTimelineTool,
       GetPolymarketMarketTool,
       GetPolymarketPositionTool,
+      GetPolymarketResolutionTool,
       GetRecentEventsTool,
       GetUniswapV3PoolTool,
       InspectAddressTool,
@@ -53,6 +54,8 @@ Rails.application.routes.draw do
   end
 
   root "marketing#home"
+
+  get "polymarket", to: "marketing#polymarket"
 
   # Friendly slug: GET /uni-eth, /usdc-base, ... (curated whitelist only).
   # The pattern constraint rejects `/about`, `/api`, etc. — only strings ending

@@ -13,6 +13,17 @@
 
     <p class="text-sm opacity-80"><%= @admin_risk.summary %></p>
 
+    <% if @protocol_adapter.is_a?(ProtocolAdapters::PolymarketAdapter) %>
+      <div class="alert alert-info alert-soft mt-4 text-sm">
+        <div>
+          <div class="font-semibold">Polymarket contract governance</div>
+          <div class="opacity-80">
+            Ask your AI who can pause, upgrade, or change roles on this Polymarket contract.
+          </div>
+        </div>
+      </div>
+    <% end %>
+
     <% if @admin_risk.error.present? %>
       <div class="alert alert-warning alert-soft mt-3">
         <span>Could not refresh admin/risk profile: <%= @admin_risk.error %></span>

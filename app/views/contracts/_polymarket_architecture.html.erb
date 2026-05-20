@@ -1,0 +1,63 @@
+<% adapter = @protocol_adapter %>
+
+<% if adapter.is_a?(ProtocolAdapters::PolymarketAdapter) %>
+  <section class="mb-8">
+    <h2 class="text-2xl font-semibold mb-4">Architecture</h2>
+    <div class="bg-base-200 rounded-lg p-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <p class="text-xs uppercase tracking-wide opacity-60 mb-1">Polymarket contract role</p>
+          <h3 class="text-xl font-semibold"><%= adapter.display_name %></h3>
+        </div>
+        <% if @canonical_slug.present? %>
+          <span class="badge badge-outline font-mono"><%= @canonical_slug %></span>
+        <% end %>
+      </div>
+
+      <p class="text-sm opacity-80 mt-3 max-w-3xl"><%= adapter.architecture_summary %></p>
+
+      <% if adapter.architecture_flow.any? %>
+        <div class="flex flex-wrap items-center gap-2 mt-4 text-sm">
+          <% adapter.architecture_flow.each_with_index do |step, index| %>
+            <span class="badge badge-ghost"><%= step %></span>
+            <% unless index == adapter.architecture_flow.length - 1 %>
+              <span class="opacity-40">→</span>
+            <% end %>
+          <% end %>
+        </div>
+      <% end %>
+
+      <% if (comparison = adapter.exchange_comparison) %>
+        <div class="mt-5 border-t border-base-300 pt-4">
+          <p class="text-sm font-medium"><%= comparison[:same_abi_note] %></p>
+          <div class="overflow-x-auto mt-3">
+            <table class="table table-sm">
+              <tbody>
+                <tr>
+                  <th class="w-40 opacity-60">Market type</th>
+                  <td><%= comparison[:market_type] %></td>
+                </tr>
+                <tr>
+                  <th class="opacity-60">Token path</th>
+                  <td><%= comparison[:token_path] %></td>
+                </tr>
+                <tr>
+                  <th class="opacity-60">Resolution path</th>
+                  <td><%= comparison[:resolution_path] %></td>
+                </tr>
+                <tr>
+                  <th class="opacity-60">Compare with</th>
+                  <td>
+                    <a href="/<%= comparison[:paired_slug] %>" class="link link-primary">
+                      <%= comparison[:paired_label] %>
+                    </a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </section>
+<% end %>

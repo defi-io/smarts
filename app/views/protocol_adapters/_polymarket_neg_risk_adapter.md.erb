@@ -1,1 +1,20 @@
-<%= render "protocol_adapters/polymarket_panel", adapter: adapter %>
+<% data = adapter.panel_data %>
+## Polymarket Neg-Risk Adapter
+
+Multi-outcome resolution adapter on Polygon. Decomposes multi-outcome
+events into binary subquestions that get resolved independently.
+
+<% if data[:groups].present? %>
+<% data[:groups].each do |event_name, items| %>
+### <%= event_name %>
+
+<% items.each do |item| %>
+- <% if item.market_id %>market `<%= item.market_id.to_s[0..9] %>…`<% end %><% if item.question_id %> · question `<%= item.question_id.to_s[0..9] %>…`<% end %><% if !item.outcome.nil? %> · outcome **<%= item.outcome %>**<% end %><% if item.payouts.any? %> · payouts [<%= item.payouts.join(", ") %>]<% end %>
+<% end %>
+<% end %>
+<% else %>
+_No multi-outcome resolution activity in the last ~3h._
+<% if data[:unavailable_events].any? %>
+Probed events not in this contract's ABI: <%= data[:unavailable_events].keys.join(", ") %>.
+<% end %>
+<% end %>

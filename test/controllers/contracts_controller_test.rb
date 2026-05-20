@@ -1183,6 +1183,158 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     refute_match "Current controls", response.body
   end
 
+  test "Polymarket contract pages highlight governance MCP queries in Admin & Risk" do
+    chain_slug, address = ContractSlugs.resolve("polymarket-conditional-tokens-polygon")
+    contract = Contract.find_or_create_by!(chain: Chain.find_by!(slug: chain_slug), address: address) do |c|
+      c.name = "ConditionalTokens"
+      c.abi = [ { "type" => "event", "name" => "ConditionResolution", "inputs" => [] } ]
+    end
+    profile = AdminRisk::Profiler::Result.new(
+      contract: contract.address, chain: "polygon",
+      summary: "No admin risk controls detected from the verified ABI.",
+      risk_flags: [], controls: [], recent_governance: { count: 0 },
+      evidence: [], warnings: [], block_number: nil, fetched_at: nil, error: nil
+    )
+
+    fake_adapter = ProtocolAdapters::PolymarketAdapter.new(contract)
+    fake_adapter.define_singleton_method(:panel_data) { { resolutions: [], preparations: [], redemptions: [], errors: {} } }
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(ProtocolAdapters::Base, :resolve, ->(_) { fake_adapter }) do
+        stub_class_method(AdminRisk::Profiler, :call, ->(**_) { profile }) do
+          get "/polymarket-conditional-tokens-polygon"
+        end
+      end
+    end
+
+    assert_response :success
+    assert_match "Polymarket contract governance", response.body
+    assert_match "Ask your AI who can pause, upgrade, or change roles", response.body
+    refute_match(/get_governance_timeline\(/, response.body)
+  end
+
+  test "Polymarket exchange docs tab distinguishes CTF and neg-risk architecture" do
+    ctf_chain, ctf_address = ContractSlugs.resolve("polymarket-ctf-exchange-v2-polygon")
+    neg_chain, neg_address = ContractSlugs.resolve("polymarket-neg-risk-exchange-v2-polygon")
+    abi = [
+      { "type" => "function", "name" => "PARENT_COLLECTION_ID",
+        "inputs" => [], "outputs" => [ { "type" => "bytes32" } ], "stateMutability" => "view" }
+    ]
+
+    Contract.find_or_create_by!(chain: Chain.find_by!(slug: ctf_chain), address: ctf_address) do |contract|
+      contract.name = "CTFExchange"
+      contract.abi = abi
+    end
+    Contract.find_or_create_by!(chain: Chain.find_by!(slug: neg_chain), address: neg_address) do |contract|
+      contract.name = "NegRiskExchange"
+      contract.abi = abi
+    end
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      get "/polymarket-ctf-exchange-v2-polygon"
+      assert_response :success
+      assert_match "Architecture", response.body
+      assert_match "Polymarket CTF Exchange", response.body
+      assert_match "binary Polymarket markets", response.body
+      assert_match "Shares the same trading ABI as the Neg-Risk Exchange", response.body
+      assert_match "Binary / Yes-No markets", response.body
+      assert_match "polymarket-neg-risk-exchange-v2-polygon", response.body
+      assert_match "CTF Exchange", response.body
+      refute_match "multi-outcome Polymarket markets", response.body
+
+      get "/polymarket-neg-risk-exchange-v2-polygon"
+      assert_response :success
+      assert_match "Architecture", response.body
+      assert_match "Polymarket Neg-Risk Exchange", response.body
+      assert_match "multi-outcome Polymarket markets", response.body
+      assert_match "Shares the same trading ABI as the CTF Exchange", response.body
+      assert_match "Multi-outcome / mutually exclusive markets", response.body
+      assert_match "polymarket-ctf-exchange-v2-polygon", response.body
+      assert_match "Neg-Risk Exchange", response.body
+    end
+  end
+
+  test "Polymarket docs add context to key functions and events" do
+    chain_slug, address = ContractSlugs.resolve("polymarket-ctf-exchange-v2-polygon")
+    abi = [
+      { "type" => "function", "name" => "matchOrders",
+        "inputs" => [], "outputs" => [], "stateMutability" => "nonpayable" },
+      { "type" => "function", "name" => "PARENT_COLLECTION_ID",
+        "inputs" => [], "outputs" => [ { "type" => "bytes32" } ], "stateMutability" => "view" },
+      { "type" => "event", "name" => "OrderFilled", "inputs" => [] }
+    ]
+    Contract.find_or_create_by!(chain: Chain.find_by!(slug: chain_slug), address: address) do |contract|
+      contract.name = "CTFExchange"
+      contract.abi = abi
+    end
+
+    panel_payload = {
+      ok: true,
+      fills_count: 0,
+      volume_usdc: BigDecimal("0"),
+      unique_takers: 0,
+      unique_markets: 0,
+      top_markets: [],
+      latest_fills: [],
+      fetched_at: Time.current
+    }
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(Polymarket::ExchangeActivity, :call, ->(contract:) { panel_payload }) do
+        get "/polymarket-ctf-exchange-v2-polygon"
+      end
+    end
+
+    assert_response :success
+    assert_match "Polymarket context", response.body
+    assert_match "binary Yes/No markets", response.body
+    assert_match "matches signed Polymarket orders", response.body
+    assert_match "Primary exchange activity signal", response.body
+  end
+
+  test "Polymarket markdown includes architecture and key contract context" do
+    chain_slug, address = ContractSlugs.resolve("polymarket-neg-risk-exchange-v2-polygon")
+    abi = [
+      { "type" => "function", "name" => "matchOrders",
+        "inputs" => [], "outputs" => [], "stateMutability" => "nonpayable" },
+      { "type" => "function", "name" => "getOrderStatus",
+        "inputs" => [], "outputs" => [], "stateMutability" => "view" },
+      { "type" => "event", "name" => "OrderFilled", "inputs" => [] }
+    ]
+    contract = Contract.find_or_create_by!(chain: Chain.find_by!(slug: chain_slug), address: address) do |c|
+      c.name = "NegRiskExchange"
+      c.abi = abi
+    end
+    contract.update!(abi: abi)
+    panel_payload = {
+      ok: true,
+      fills_count: 0,
+      volume_usdc: BigDecimal("0"),
+      unique_takers: 0,
+      unique_markets: 0,
+      top_markets: [],
+      latest_fills: [],
+      fetched_at: Time.current
+    }
+
+    stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      stub_class_method(Polymarket::ExchangeActivity, :call, ->(contract:) { panel_payload }) do
+        get "/polymarket-neg-risk-exchange-v2-polygon.md"
+      end
+    end
+
+    assert_response :success
+    assert_equal "text/markdown", response.media_type
+    assert_match "## Architecture", response.body
+    assert_match "Polymarket Neg-Risk Exchange", response.body
+    assert_match "Shares the same trading ABI as the CTF Exchange", response.body
+    assert_match "Multi-outcome / mutually exclusive markets", response.body
+    assert_match "## Key contract context", response.body
+    assert_match "multi-outcome markets", response.body
+    assert_match "matches signed Polymarket orders", response.body
+    assert_match "Primary exchange activity signal", response.body
+  end
+
   test "show HTML falls back gracefully when AdminRisk::Profiler raises" do
     # Controller's rescue must convert the crash into the canned "Could not
     # build admin risk profile." Result. Otherwise a Profiler bug would 500

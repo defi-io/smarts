@@ -8,7 +8,10 @@ class GetPolymarketMarketToolTest < ActiveSupport::TestCase
       condition_id: "0x" + ("12" * 32),
       question: "Sample?",
       outcomes: [
-        Polymarket::MarketFetcher::Outcome.new(name: "Yes", token_id: "101", position_id: 111, price: BigDecimal("0.62")),
+        Polymarket::MarketFetcher::Outcome.new(
+          name: "Yes", token_id: "101", position_id: 111, price: BigDecimal("0.62"),
+          mid_price: BigDecimal("0.61"), best_bid: BigDecimal("0.60"), best_ask: BigDecimal("0.62")
+        ),
         Polymarket::MarketFetcher::Outcome.new(name: "No", token_id: "202", position_id: 222, price: BigDecimal("0.38"))
       ],
       neg_risk: false,
@@ -32,6 +35,9 @@ class GetPolymarketMarketToolTest < ActiveSupport::TestCase
       assert_equal "Polymarket", payload[:protocol]
       assert_equal "sample", payload[:slug]
       assert_equal "0.62", payload[:outcomes].first[:price]
+      assert_equal "0.61", payload[:outcomes].first[:mid_price]
+      assert_equal "0.6", payload[:outcomes].first[:best_bid]
+      assert_equal "0.62", payload[:outcomes].first[:best_ask]
       assert_equal "2026-05-19T12:00:00Z", payload[:fetched_at]
       assert_match(/polymarket\.com/, payload[:links][:polymarket_url])
     end

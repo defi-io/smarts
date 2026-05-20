@@ -240,12 +240,12 @@ Commits are intentionally small and reviewable. Each one should leave tests gree
 
 ### Phase B
 
-11. **`feat(polymarket): add CLOB midpoint + best bid/ask`**
+11. **`feat(polymarket): add CLOB midpoint + best bid/ask`** ✅
     - Extend `PolymarketClient` with `.fetch_midpoint(token_id)`, `.fetch_best_price(token_id, side:)`, batch variants (POST `/midpoints`, POST `/prices`)
     - 30s Solid Cache (prices move fast; longer would be misleading)
     - Handle "no orderbook" responses gracefully (closed markets return error JSON — treat as expected `nil`)
 
-12. **`feat(polymarket): surface live prices in MarketFetcher + MCP tool`**
+12. **`feat(polymarket): surface live prices in MarketFetcher + MCP tool`** ✅
     - `MarketFetcher` calls CLOB pricing in parallel with on-chain reads for active markets only
     - `get_polymarket_market` output gains:
       ```ruby
@@ -254,7 +254,7 @@ Commits are intentionally small and reviewable. Each one should leave tests gree
     - All prices as `BigDecimal` → JSON-serialize as string to preserve precision
     - Tests: VCR-cassette for live orderbook; price-parsing edge cases
 
-13. **`feat(adapter): live prices in protocol_adapters/_polymarket_exchange.html.erb`**
+13. **`feat(adapter): live prices in protocol_adapters/_polymarket_exchange.html.erb`** ✅
     - Add a "Live markets" Turbo Frame on exchange contract show pages, refreshed every 30s
     - Top 5 active markets by volume with mid prices
 
@@ -306,8 +306,8 @@ The supported-protocols table at the top of CLAUDE.md also gets:
 | CLOB `/midpoint`, `/price`, `/books` | Solid Cache | 30 s |
 | `ConditionalTokens.payoutDenominator/Numerators` | Solid Cache | 60 s (resolved markets effectively immutable; keep TTL short to catch settlement transitions) |
 | `ConditionalTokens.balanceOf` | Solid Cache | 30 s (positions can move) |
-| `MarketFetcher` composite | Solid Cache | 60 s |
-| Adapter panel partial | Rails fragment | 60 s |
+| `MarketFetcher` composite | Solid Cache | 30 s (includes live CLOB prices) |
+| Adapter panel partial | Rails fragment | 30 s |
 
 Cache keys follow the existing convention: `polymarket:{layer}:{chain}:{identifier}`.
 
@@ -325,10 +325,10 @@ Cache keys follow the existing convention: `polymarket:{layer}:{chain}:{identifi
 - [x] CLAUDE.md amendment merged
 
 ### Phase B
-- [ ] `get_polymarket_market` for an active market now includes `mid_price`, `best_bid`, `best_ask` per outcome
-- [ ] Closed markets return `nil` for those fields without raising errors
-- [ ] All prices are JSON strings preserving the source decimal precision
-- [ ] Exchange contract show page has a live Turbo Frame showing top-5 markets by volume
+- [x] `get_polymarket_market` for an active market now includes `mid_price`, `best_bid`, `best_ask` per outcome
+- [x] Closed markets return `nil` for those fields without raising errors
+- [x] All prices are JSON strings (BigDecimal-backed; no Float serialization)
+- [x] Exchange contract show page has a live Turbo Frame showing top-5 mainstream markets with 30s refresh
 
 ### Hard NOs (out of scope, even if convenient)
 - ❌ Placing orders / signing trades — read-only forever

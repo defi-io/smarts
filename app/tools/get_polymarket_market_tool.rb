@@ -27,7 +27,10 @@ class GetPolymarketMarketTool < ApplicationTool
             name: outcome.name,
             token_id: outcome.token_id,
             position_id: outcome.position_id,
-            price: outcome.price&.to_s("F")
+            price: outcome.price&.to_s("F"),
+            mid_price: outcome.mid_price&.to_s("F"),
+            best_bid: outcome.best_bid&.to_s("F"),
+            best_ask: outcome.best_ask&.to_s("F")
           }
         end,
         neg_risk: market.neg_risk,
@@ -52,10 +55,12 @@ class GetPolymarketMarketTool < ApplicationTool
     private
 
     def links_for(market)
+      exchange_slug = market.neg_risk ? "polymarket-neg-risk-exchange-v2-polygon" : "polymarket-ctf-exchange-v2-polygon"
+
       {
         polymarket_url: market.slug.present? ? "https://polymarket.com/market/#{market.slug}" : nil,
-        exchange_contract: "https://smarts.md/polymarket-ctf-exchange-v2-polygon",
-        conditional_tokens_contract: "https://smarts.md/polymarket-conditional-tokens-polygon"
+        exchange_contract: "/#{exchange_slug}",
+        conditional_tokens_contract: "/polymarket-conditional-tokens-polygon"
       }
     end
   end

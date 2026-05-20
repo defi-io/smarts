@@ -107,6 +107,28 @@ module ContractsHelper
                 title: "Read at chain block ##{block}; cached for up to 60s.")
   end
 
+  # Forgiving ISO8601 → Time parser for inline use in views. Returns nil on
+  # blank/garbage so `time_ago_short(parse_iso(value))` reads cleanly.
+  def parse_iso(value)
+    return nil if value.blank?
+
+    Time.iso8601(value.to_s)
+  rescue ArgumentError
+    nil
+  end
+
+  def polymarket_panel_frame(&block)
+    turbo_frame_tag(
+      "polymarket_panel",
+      data: {
+        controller: "polymarket-prices-poll",
+        polymarket_prices_poll_interval_value: 30_000,
+        polymarket_prices_poll_frame_id_value: "polymarket_panel"
+      },
+      &block
+    )
+  end
+
   # Compact "23s" / "4m" / "1h" formatter. Returns "now" for sub-second /
   # missing input. Use freshness_phrase for the user-facing "23s ago" form.
   def time_ago_short(time)
@@ -241,6 +263,58 @@ module ContractsHelper
       value.to_s.downcase
     else
       value.to_s
+    end
+  end
+
+  POLYMARKET_FUNCTION_CONTEXT = {
+    "matchOrders" => "Core exchange entry point: matches signed Polymarket orders and moves collateral/outcome tokens for the active market path.",
+    "cancelOrder" => "Prevents a signed order from being filled later; useful when a trader withdraws liquidity from a Polymarket market.",
+    "cancelOrders" => "Batch version of order cancellation for multiple signed Polymarket orders.",
+    "validateOrder" => "Checks whether an order is structurally fillable before execution, including signature and exchange constraints.",
+    "getOrderStatus" => "Returns the fill/cancel state used to decide whether a Polymarket order can still trade.",
+    "PARENT_COLLECTION_ID" => "Identifies the parent collection used when deriving conditional-token positions for this exchange path.",
+    "payoutDenominator" => "Non-zero means the condition has a final on-chain payout vector and can be audited from CTF state.",
+    "payoutNumerators" => "Stores each outcome's share of the final payout vector for a resolved condition.",
+    "prepareCondition" => "Creates the CTF condition that will later hold outcome payout data for a Polymarket market.",
+    "reportPayouts" => "Writes the final outcome payout vector into Conditional Tokens after oracle resolution.",
+    "redeemPositions" => "Redeems winning or partially winning outcome tokens after a condition has resolved.",
+    "prepareQuestion" => "Registers a neg-risk question so a multi-outcome market can be resolved through the adapter path.",
+    "reportOutcome" => "Reports the winning outcome for a neg-risk market after oracle resolution."
+  }.freeze
+
+  POLYMARKET_EVENT_CONTEXT = {
+    "OrderFilled" => "Primary exchange activity signal: a Polymarket order was matched on-chain.",
+    "OrderCancelled" => "A signed Polymarket order was invalidated before fill.",
+    "ConditionPreparation" => "A new Conditional Tokens condition was prepared for a market.",
+    "ConditionResolution" => "A condition received its final on-chain payout vector.",
+    "PayoutRedemption" => "Outcome tokens were redeemed after resolution.",
+    "QuestionInitialized" => "A market question entered the UMA adapter resolution flow.",
+    "QuestionFlagged" => "A UMA question was flagged for review, the on-chain signal Polymarket uses for disputed or abnormal resolution flow.",
+    "QuestionResolved" => "The UMA adapter finalized an answer and can drive market settlement.",
+    "QuestionPrepared" => "A neg-risk question was prepared for a multi-outcome market."
+  }.freeze
+
+  def polymarket_context_for(item)
+    return nil unless @protocol_adapter.is_a?(ProtocolAdapters::PolymarketAdapter)
+    return nil unless item.is_a?(Hash)
+
+    name = item["name"].to_s
+    case item["type"]
+    when "function"
+      role_prefix = polymarket_role_context_prefix
+      context = POLYMARKET_FUNCTION_CONTEXT[name]
+      [ role_prefix, context ].compact.join(" ")
+    when "event"
+      POLYMARKET_EVENT_CONTEXT[name]
+    end.presence
+  end
+
+  def polymarket_role_context_prefix
+    case @protocol_adapter.role
+    when :ctf_exchange
+      "On the CTF Exchange, this applies to binary Yes/No markets."
+    when :neg_risk_exchange
+      "On the Neg-Risk Exchange, this applies to multi-outcome markets."
     end
   end
 

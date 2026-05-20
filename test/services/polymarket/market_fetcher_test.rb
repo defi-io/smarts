@@ -29,6 +29,29 @@ class Polymarket::MarketFetcherTest < ActiveSupport::TestCase
     end
   end
 
+  test "adds live CLOB prices for active orderbook markets" do
+    market = self.market
+    market.enable_order_book = true
+    live_prices = {
+      "101" => { mid_price: BigDecimal("0.61"), best_bid: BigDecimal("0.60"), best_ask: BigDecimal("0.62") },
+      "202" => { mid_price: BigDecimal("0.39"), best_bid: BigDecimal("0.38"), best_ask: BigDecimal("0.40") }
+    }
+
+    stub_class_method(PolymarketClient, :fetch_market_by_slug, ->(_slug) { market }) do
+      stub_class_method(PolymarketClient, :fetch_live_prices, ->(_token_ids) { live_prices }) do
+        stub_class_method(Polymarket::ResolutionReader, :call, ->(**) { resolution }) do
+          stub_class_method(ChainReader::ConditionalTokensReader, :position_ids, ->(**) { [ 111, 222 ] }) do
+            result = Polymarket::MarketFetcher.call(slug: "sample")
+
+            assert_equal BigDecimal("0.61"), result.outcomes.first.mid_price
+            assert_equal BigDecimal("0.60"), result.outcomes.first.best_bid
+            assert_equal BigDecimal("0.62"), result.outcomes.first.best_ask
+          end
+        end
+      end
+    end
+  end
+
   private
 
   def market

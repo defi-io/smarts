@@ -50,6 +50,25 @@ class PolymarketClientTest < ActiveSupport::TestCase
     assert_equal "Will example happen?", market.question
   end
 
+  test "preserves explicit false booleans from Gamma payloads" do
+    stub_request(:get, "https://gamma-api.polymarket.com/markets/slug/#{SLUG}").to_return(
+      status: 200,
+      body: gamma_market.merge(
+        "active" => false,
+        "closed" => false,
+        "negRisk" => false,
+        "acceptingOrders" => false
+      ).to_json
+    )
+
+    market = PolymarketClient.fetch_market_by_slug(SLUG)
+
+    assert_equal false, market.active
+    assert_equal false, market.closed
+    assert_equal false, market.neg_risk
+    assert_equal false, market.accepting_orders
+  end
+
   test "fetch_market_by_slug raises not found on 404" do
     stub_request(:get, "https://gamma-api.polymarket.com/markets/slug/missing").to_return(status: 404)
 
@@ -126,6 +145,118 @@ class PolymarketClientTest < ActiveSupport::TestCase
     markets = PolymarketClient.fetch_top_markets(limit: 5)
 
     assert_equal [ "Bitcoin above $150k on December 31?" ], markets.map(&:question)
+  end
+
+  test "fetch_midpoints posts token IDs and parses decimals" do
+    stub = stub_request(:post, "https://clob.polymarket.com/midpoints")
+      .with(body: [ { token_id: "101" }, { token_id: "202" } ].to_json)
+      .to_return(status: 200, body: { "101" => "0.61", "202" => "0.39" }.to_json)
+
+    result = PolymarketClient.fetch_midpoints([ "101", "202" ])
+
+    assert_equal BigDecimal("0.61"), result["101"]
+    assert_equal BigDecimal("0.39"), result["202"]
+    assert_requested stub, times: 1
+  end
+
+  test "fetch_prices posts token IDs with sides and parses best bid ask decimals" do
+    stub = stub_request(:post, "https://clob.polymarket.com/prices")
+      .with(body: [
+        { token_id: "101", side: "BUY" },
+        { token_id: "101", side: "SELL" }
+      ].to_json)
+      .to_return(status: 200, body: { "101" => { "BUY" => 0.6, "SELL" => 0.62 } }.to_json)
+
+    result = PolymarketClient.fetch_prices([
+      { token_id: "101", side: "BUY" },
+      { token_id: "101", side: "SELL" }
+    ])
+
+    assert_equal BigDecimal("0.6"), result.dig("101", "BUY")
+    assert_equal BigDecimal("0.62"), result.dig("101", "SELL")
+    assert_requested stub, times: 1
+  end
+
+  test "fetch_live_prices combines midpoints and bid ask prices" do
+    stub_request(:post, "https://clob.polymarket.com/midpoints")
+      .to_return(status: 200, body: { "101" => "0.61" }.to_json)
+    stub_request(:post, "https://clob.polymarket.com/prices")
+      .to_return(status: 200, body: { "101" => { "BUY" => "0.60", "SELL" => "0.62" } }.to_json)
+
+    result = PolymarketClient.fetch_live_prices([ "101" ])
+
+    assert_equal BigDecimal("0.61"), result.dig("101", :mid_price)
+    assert_equal BigDecimal("0.60"), result.dig("101", :best_bid)
+    assert_equal BigDecimal("0.62"), result.dig("101", :best_ask)
+  end
+
+  test "fetch_markets_by_condition_ids returns slug + question keyed by condition_id" do
+    stub_request(:get, "https://gamma-api.polymarket.com/markets")
+      .with(query: hash_including("condition_ids" => "#{CONDITION_ID},0xdeadbeef0000000000000000000000000000000000000000000000000000beef"))
+      .to_return(status: 200, body: [
+        gamma_market.merge("slug" => "btc-200k", "question" => "Will BTC top $200k?")
+      ].to_json)
+
+    result = PolymarketClient.fetch_markets_by_condition_ids([
+      CONDITION_ID,
+      "0xdeadbeef0000000000000000000000000000000000000000000000000000beef"
+    ])
+
+    assert_equal "btc-200k", result[CONDITION_ID][:slug]
+    assert_equal "Will BTC top $200k?", result[CONDITION_ID][:question]
+  end
+
+  test "fetch_markets_by_condition_ids drops malformed ids without aborting" do
+    stub_request(:get, "https://gamma-api.polymarket.com/markets")
+      .with(query: hash_including("condition_ids" => CONDITION_ID))
+      .to_return(status: 200, body: [ gamma_market ].to_json)
+
+    result = PolymarketClient.fetch_markets_by_condition_ids([ CONDITION_ID, "garbage", "0xnothex" ])
+
+    assert_equal 1, result.size
+    assert result.key?(CONDITION_ID)
+  end
+
+  test "fetch_markets_by_question_ids accepts binary bytes32 question ids" do
+    question_id = "0x" + ("34" * 32)
+    binary_question_id = [ "34" * 32 ].pack("H*").b
+
+    stub_request(:get, "https://gamma-api.polymarket.com/markets")
+      .with(query: hash_including("question_ids" => question_id))
+      .to_return(status: 200, body: [ gamma_market ].to_json)
+
+    result = PolymarketClient.fetch_markets_by_question_ids([ binary_question_id ])
+
+    assert_equal SLUG, result[question_id][:slug]
+    assert_equal "Will example happen?", result[question_id][:question]
+  end
+
+  test "fetch_token_id_index builds a token_id => market hash from the events feed" do
+    stub_request(:get, "https://gamma-api.polymarket.com/events")
+      .with(query: hash_including("active" => "true", "order" => "volume_24hr"))
+      .to_return(status: 200, body: [
+        {
+          "title" => "BTC markets",
+          "tags" => [ { "slug" => "crypto" } ],
+          "markets" => [ gamma_market.merge("slug" => "btc-200k", "question" => "Will BTC top $200k?") ]
+        }
+      ].to_json)
+
+    index = PolymarketClient.fetch_token_id_index
+
+    assert_equal "btc-200k", index["101"].slug
+    assert_equal "Yes", index["101"].outcome
+    assert_equal "No", index["202"].outcome
+    assert_equal "Will BTC top $200k?", index["101"].question
+  end
+
+  test "fetch_live_prices returns nil fields when CLOB has no orderbook" do
+    stub_request(:post, "https://clob.polymarket.com/midpoints").to_return(status: 404)
+    stub_request(:post, "https://clob.polymarket.com/prices").to_return(status: 404)
+
+    result = PolymarketClient.fetch_live_prices([ "101" ])
+
+    assert_equal({ mid_price: nil, best_bid: nil, best_ask: nil }, result["101"])
   end
 
   private

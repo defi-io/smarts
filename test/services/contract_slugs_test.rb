@@ -137,7 +137,12 @@ class ContractSlugsTest < ActiveSupport::TestCase
   end
 
   test "curated protocol slugs include the Polymarket contract family on Polygon" do
-    # Exchanges: V1 (USDC.e collateral) and V2 (Polymarket USD collateral) run in parallel
+    # User-facing collateral: pUSD, Polymarket's own dual-USDC-backed stablecoin
+    assert_equal [ "polygon", "0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb" ],
+                 ContractSlugs.resolve("polymarket-pusd-polygon")
+
+    # Exchanges: V1 (USDC.e collateral, no CtfCollateralAdapter layer) and
+    # V2 (pUSD collateral, bridged into CTF via the collateral adapters below)
     assert_equal [ "polygon", "0x4bfb41d5b3570defd03c39a9a4d8de6bd8b8982e" ],
                  ContractSlugs.resolve("polymarket-ctf-exchange-v1-polygon")
     assert_equal [ "polygon", "0xe111180000d2663c0091e4f400237545b87b996b" ],
@@ -149,22 +154,50 @@ class ContractSlugsTest < ActiveSupport::TestCase
     assert_equal [ "polygon", "0xd91e80cf2e7be2e162c6513ced06f1dd0da35296" ],
                  ContractSlugs.resolve("polymarket-neg-risk-adapter-polygon")
 
-    # Shared CTF (ERC-1155) and UMA oracle adapters across binary markets
+    # Collateral adapters: bridge pUSD into the CTF layer. Binary path keys
+    # positions by USDC.e; neg-risk path keys by WCOL (owned by NegRiskAdapter).
+    assert_equal [ "polygon", "0xada100874d00e3331d00f2007a9c336a65009718" ],
+                 ContractSlugs.resolve("polymarket-collateral-adapter-polygon")
+    assert_equal [ "polygon", "0xada200001000ef00d07553cee7006808f895c6f1" ],
+                 ContractSlugs.resolve("polymarket-neg-risk-collateral-adapter-polygon")
+
+    # NegRiskOperator: shim that lets a standard UmaCtfAdapter target the
+    # NegRiskAdapter's non-CTF resolution interface (prepareQuestion / reportOutcome)
+    assert_equal [ "polygon", "0x71523d0f655b41e805cec45b17163f528b59b820" ],
+                 ContractSlugs.resolve("polymarket-neg-risk-operator-polygon")
+
+    # Shared CTF (ERC-1155) and UMA oracle adapters. v1/v2 resolve binary
+    # markets directly into CTF; v3 resolves neg-risk markets via the operator.
     assert_equal [ "polygon", "0x4d97dcd97ec945f40cf65f87097ace5ea0476045" ],
                  ContractSlugs.resolve("polymarket-conditional-tokens-polygon")
     assert_equal [ "polygon", "0x6a9d222616c90fca5754cd1333cfd9b7fb6a4f74" ],
                  ContractSlugs.resolve("polymarket-uma-adapter-v2-polygon")
   end
 
+  test "polymarket_slugs returns the full curated Polymarket contract family" do
+    slugs = ContractSlugs.polymarket_slugs
+
+    assert_includes slugs, "polymarket-ctf-exchange-v2-polygon"
+    assert_includes slugs, "polymarket-neg-risk-exchange-v2-polygon"
+    assert_includes slugs, "polymarket-conditional-tokens-polygon"
+    assert_includes slugs, "polymarket-uma-adapter-v3-polygon"
+    assert_operator slugs.length, :>=, 13
+    assert slugs.all? { |slug| ContractSlugs.resolve(slug)&.first == "polygon" }
+  end
+
   # The reverse lookup is what the contracts controller uses to redirect
   # `/polygon/0x...` hex URLs to `/polymarket-*-polygon`. Confirm a sampling
   # of new Polymarket addresses route there.
   test "for returns Polymarket slugs from canonical addresses" do
+    assert_equal "polymarket-pusd-polygon",
+                 ContractSlugs.for("polygon", "0xc011a7e12a19f7b1f670d46f03b03f3342e82dfb")
     assert_equal "polymarket-ctf-exchange-v2-polygon",
                  ContractSlugs.for("polygon", "0xe111180000d2663c0091e4f400237545b87b996b")
     assert_equal "polymarket-conditional-tokens-polygon",
                  ContractSlugs.for("polygon", "0x4d97dcd97ec945f40cf65f87097ace5ea0476045")
     assert_equal "polymarket-uma-adapter-v3-polygon",
                  ContractSlugs.for("polygon", "0x2f5e3684cb1f318ec51b00edba38d79ac2c0aa9d")
+    assert_equal "polymarket-neg-risk-operator-polygon",
+                 ContractSlugs.for("polygon", "0x71523d0f655b41e805cec45b17163f528b59b820")
   end
 end

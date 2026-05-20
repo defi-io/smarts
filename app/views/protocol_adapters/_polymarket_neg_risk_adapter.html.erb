@@ -1,1 +1,70 @@
-<%= render "protocol_adapters/polymarket_panel", adapter: adapter %>
+<% data = adapter.panel_data %>
+
+<%= polymarket_panel_frame do %>
+<div class="card bg-base-100 border border-base-300 mb-6">
+  <div class="card-body">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <div class="text-xs opacity-60 font-mono mb-1">Polymarket</div>
+        <h2 class="text-2xl font-bold"><%= adapter.display_name %></h2>
+        <p class="text-sm opacity-70 mt-1">Multi-outcome resolution adapter · Polygon</p>
+      </div>
+    </div>
+
+    <% if data[:groups].present? %>
+      <% data[:groups].each do |event_name, items| %>
+        <div class="divider mt-4 mb-2"></div>
+        <h3 class="text-sm font-semibold opacity-80 mb-2"><%= event_name %></h3>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Market / Question</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% items.each do |item| %>
+                <tr>
+                  <td class="text-xs opacity-60 whitespace-nowrap"><%= time_ago_short(parse_iso(item.timestamp)) %> ago</td>
+                  <td class="font-mono text-xs">
+                    <% if item.market_id %>
+                      market: <%= item.market_id.to_s[0..9] %>…
+                    <% end %>
+                    <% if item.question_id %>
+                      <br>question: <%= item.question_id.to_s[0..9] %>…
+                    <% end %>
+                  </td>
+                  <td class="text-xs">
+                    <% if !item.outcome.nil? %>
+                      outcome: <span class="font-mono"><%= item.outcome %></span>
+                    <% elsif item.outcome_index %>
+                      index: <%= item.outcome_index %>
+                    <% elsif item.payouts.any? %>
+                      payouts: [<%= item.payouts.join(", ") %>]
+                    <% end %>
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="text-sm opacity-70 mt-6">
+        No multi-outcome resolution activity in the last ~3h.
+        <% if data[:unavailable_events].any? %>
+          <span class="block mt-2 text-xs opacity-60">
+            Probed events not in this contract's ABI: <%= data[:unavailable_events].keys.join(", ") %>
+          </span>
+        <% end %>
+      </p>
+    <% end %>
+
+    <div class="text-xs opacity-50 mt-6">
+      Ask your AI to explain how a multi-outcome market maps into on-chain neg-risk resolution events.
+    </div>
+  </div>
+</div>
+<% end %>

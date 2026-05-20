@@ -60,11 +60,13 @@ module ContractDocument
       classification = Classifier.call(@contract)&.display_name || "generic Solidity contract"
       inputs_desc = inputs_lines(fn)
       returns_desc = outputs_lines(fn)
+      protocol_context = protocol_context_lines
 
       <<~PROMPT
         You are documenting a Solidity smart contract function. Return JSON only — no prose, no markdown fences.
 
         Contract: #{@contract.name || '(unknown)'} (classified as #{classification})
+        #{protocol_context}
         Function signature: #{signature(fn)}
         Mutability: #{fn['stateMutability']}
         Inputs:
@@ -81,6 +83,25 @@ module ContractDocument
           "returns": ["Description of each return value in order."]
         }
       PROMPT
+    end
+
+    def protocol_context_lines
+      adapter = ProtocolAdapters::Base.resolve(@contract)
+      return nil unless adapter.is_a?(ProtocolAdapters::PolymarketAdapter)
+
+      lines = [
+        "Protocol: #{adapter.protocol_name}",
+        "Contract role: #{adapter.display_name}",
+        "Architecture context: #{adapter.architecture_summary}"
+      ]
+      flow = adapter.architecture_flow
+      lines << "Flow: #{flow.join(' -> ')}" if flow.present?
+      comparison = adapter.exchange_comparison
+      lines << "Exchange distinction: #{comparison[:same_abi_note]} #{comparison[:market_type]}." if comparison.present?
+      lines.join("\n")
+    rescue StandardError => e
+      Rails.logger.warn("[AiEnricher] protocol context failed: #{e.class}: #{e.message}")
+      nil
     end
 
     def parse_response(text, fn)

@@ -1,1 +1,121 @@
-<%= render "protocol_adapters/polymarket_panel", adapter: adapter %>
+<% data = adapter.panel_data %>
+
+<%= polymarket_panel_frame do %>
+<div class="card bg-base-100 border border-base-300 mb-6">
+  <div class="card-body">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <div class="text-xs opacity-60 font-mono mb-1">Polymarket</div>
+        <h2 class="text-2xl font-bold"><%= adapter.display_name %></h2>
+        <p class="text-sm opacity-70 mt-1">UMA Optimistic Oracle bridge · resolves binary markets · Polygon</p>
+      </div>
+    </div>
+
+    <% if data[:errors].present? %>
+      <div class="alert alert-warning mt-4 text-sm">
+        Some on-chain reads failed:
+        <ul class="ml-4 list-disc">
+          <% data[:errors].each do |event_name, message| %>
+            <li><%= event_name %>: <%= message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <% if data[:timeline].present? %>
+      <div class="divider mt-4 mb-2"></div>
+      <h3 class="text-sm font-semibold opacity-80 mb-2">Resolution timeline</h3>
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr><th></th><th>Stage</th><th>Question</th><th>Payouts</th></tr>
+          </thead>
+          <tbody>
+            <% data[:timeline].each do |q| %>
+              <tr>
+                <td class="text-xs opacity-60 whitespace-nowrap"><%= time_ago_short(parse_iso(q.timestamp)) %> ago</td>
+                <td>
+                  <span class="badge badge-sm <%= q.kind == :disputed ? "badge-error" : "badge-ghost" %>">
+                    <%= q.label %>
+                  </span>
+                </td>
+                <td>
+                  <div class="text-sm max-w-md"><%= q.market_label %></div>
+                  <% if q.slug.present? %>
+                    <div class="text-xs opacity-60 font-mono"><%= q.slug %></div>
+                  <% end %>
+                </td>
+                <td class="font-mono text-xs">
+                  <% if q.payouts.present? %>
+                    [<%= q.payouts.join(", ") %>]
+                  <% else %>
+                    —
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% if data[:initialized].present? %>
+      <div class="divider mt-4 mb-2"></div>
+      <h3 class="text-sm font-semibold opacity-80 mb-2">In-flight (initialized, awaiting resolution)</h3>
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr><th></th><th>Question</th></tr>
+          </thead>
+          <tbody>
+            <% data[:initialized].each do |q| %>
+              <tr>
+                <td class="text-xs opacity-60 whitespace-nowrap"><%= time_ago_short(parse_iso(q.timestamp)) %> ago</td>
+                <td>
+                  <div class="text-sm max-w-md"><%= q.market_label %></div>
+                  <% if q.slug.present? %>
+                    <div class="text-xs opacity-60 font-mono"><%= q.slug %></div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% if data[:disputed].present? %>
+      <div class="divider mt-4 mb-2"></div>
+      <h3 class="text-sm font-semibold opacity-80 mb-2 text-error">Disputed</h3>
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr><th></th><th>Question</th></tr>
+          </thead>
+          <tbody>
+            <% data[:disputed].each do |q| %>
+              <tr>
+                <td class="text-xs opacity-60 whitespace-nowrap"><%= time_ago_short(parse_iso(q.timestamp)) %> ago</td>
+                <td>
+                  <div class="text-sm max-w-md"><%= q.market_label %></div>
+                  <% if q.slug.present? %>
+                    <div class="text-xs opacity-60 font-mono"><%= q.slug %></div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% if data[:timeline].blank? && data[:resolved].blank? && data[:initialized].blank? && data[:disputed].blank? %>
+      <p class="text-sm opacity-70 mt-6">No UMA adapter activity in the last ~3h. Older adapter versions may be inactive.</p>
+    <% end %>
+
+    <div class="text-xs opacity-50 mt-6">
+      Ask your AI to trace a market from UMA question initialization through dispute and final CTF payout.
+    </div>
+  </div>
+</div>
+<% end %>

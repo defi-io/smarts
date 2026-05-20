@@ -1,1 +1,117 @@
-<%= render "protocol_adapters/polymarket_panel", adapter: adapter %>
+<% data = adapter.panel_data %>
+
+<%= polymarket_panel_frame do %>
+<div class="card bg-base-100 border border-base-300 mb-6">
+  <div class="card-body">
+    <div class="flex items-start justify-between gap-4 flex-wrap">
+      <div>
+        <div class="text-xs opacity-60 font-mono mb-1">Polymarket</div>
+        <h2 class="text-2xl font-bold"><%= adapter.display_name %></h2>
+        <p class="text-sm opacity-70 mt-1"><%= adapter.exchange_description %></p>
+      </div>
+      <% if (block = data[:window_block_to]) %>
+        <div class="text-xs opacity-60 font-mono self-start text-right">
+          last ~3h on-chain<br>
+          through block <%= number_with_delimiter(block) %>
+        </div>
+      <% end %>
+    </div>
+
+    <% if data[:error] %>
+      <div class="alert alert-warning mt-4">
+        Could not read on-chain activity: <%= data[:error] %>
+      </div>
+    <% else %>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+        <div>
+          <div class="text-xs opacity-60 mb-1">Fills</div>
+          <div class="text-2xl font-mono"><%= number_with_delimiter(data[:fills_count] || 0) %></div>
+        </div>
+        <div>
+          <div class="text-xs opacity-60 mb-1">Volume</div>
+          <div class="text-2xl font-mono">$<%= number_with_delimiter((data[:volume_usdc] || 0).round(0).to_i) %></div>
+        </div>
+        <div>
+          <div class="text-xs opacity-60 mb-1">Unique takers</div>
+          <div class="text-2xl font-mono"><%= number_with_delimiter(data[:unique_takers] || 0) %></div>
+        </div>
+        <div>
+          <div class="text-xs opacity-60 mb-1">Markets touched</div>
+          <div class="text-2xl font-mono"><%= number_with_delimiter(data[:unique_markets] || 0) %></div>
+        </div>
+      </div>
+
+      <% if data[:top_markets].present? %>
+        <div class="divider mt-6 mb-2"></div>
+        <h3 class="text-sm font-semibold opacity-80 mb-2">Most active markets (by USDC volume)</h3>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Market</th>
+                <th class="text-right">Fills</th>
+                <th class="text-right">Volume</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% data[:top_markets].each do |market| %>
+                <tr>
+                  <td>
+                    <div class="font-medium max-w-xl"><%= market.market_label %></div>
+                    <% if market.slug.present? %>
+                      <div class="text-xs opacity-60 font-mono"><%= market.slug %></div>
+                    <% end %>
+                  </td>
+                  <td class="text-right font-mono"><%= number_with_delimiter(market.fills_count) %></td>
+                  <td class="text-right font-mono">$<%= number_with_delimiter(market.volume_usdc.round(0).to_i) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+
+      <% if data[:latest_fills].present? %>
+        <div class="divider mt-6 mb-2"></div>
+        <h3 class="text-sm font-semibold opacity-80 mb-2">Latest fills</h3>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Market</th>
+                <th>Side</th>
+                <th class="text-right">Price</th>
+                <th class="text-right">Size</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% data[:latest_fills].each do |fill| %>
+                <tr>
+                  <td class="text-xs opacity-60 whitespace-nowrap"><%= time_ago_short(parse_iso(fill.timestamp)) %> ago</td>
+                  <td class="text-sm max-w-md truncate"><%= fill.market_label %></td>
+                  <td>
+                    <span class="badge badge-sm <%= fill.side == "Buy" ? "badge-success" : "badge-error" %> badge-outline">
+                      <%= fill.side %>
+                    </span>
+                  </td>
+                  <td class="text-right font-mono text-sm"><%= fill.price.to_s("F") %></td>
+                  <td class="text-right font-mono text-sm">$<%= number_with_delimiter(fill.usdc_amount.round(2)) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      <% end %>
+
+      <% if data[:fills_count].to_i.zero? %>
+        <p class="text-sm opacity-70 mt-6">No OrderFilled events in the last ~3h. This contract version may be inactive — check the other Polymarket exchange contracts.</p>
+      <% end %>
+    <% end %>
+
+    <div class="text-xs opacity-50 mt-6">
+      Ask your AI to explain how this exchange routes orders through Polymarket's on-chain market contracts.
+    </div>
+  </div>
+</div>
+<% end %>

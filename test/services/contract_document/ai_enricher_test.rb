@@ -136,6 +136,30 @@ class ContractDocument::AiEnricherTest < ActiveSupport::TestCase
     assert_equal ContractDocument::AiEnricher::MAX_FUNCTIONS_PER_CONTRACT, invocations
   end
 
+  test "includes Polymarket architecture context in generated source docs prompt" do
+    contract = build_contract_with_abi(
+      [ abi_fn("matchOrders", inputs: [ "bytes32" ]) ],
+      chain: chains(:polygon),
+      address: "0x4bfb41d5b3570defd03c39a9a4d8de6bd8b8982e"
+    )
+    captured_prompt = nil
+
+    chat = Object.new
+    chat.define_singleton_method(:ask) do |prompt|
+      captured_prompt = prompt
+      Struct.new(:content).new(claude_json(notice: "Matches Polymarket orders."))
+    end
+
+    stub_class_method(RubyLLM, :chat, ->(**_) { chat }) do
+      ContractDocument::AiEnricher.call(contract)
+    end
+
+    assert_includes captured_prompt, "Protocol: Polymarket"
+    assert_includes captured_prompt, "Contract role: Polymarket CTF Exchange"
+    assert_includes captured_prompt, "Architecture context: Matches orders for binary Polymarket markets."
+    assert_includes captured_prompt, "Exchange distinction: Shares the same trading ABI as the Neg-Risk Exchange"
+  end
+
   private
 
   def abi_fn(name, inputs: [], outputs: [ "bool" ], mutability: "nonpayable")
@@ -155,8 +179,8 @@ class ContractDocument::AiEnricherTest < ActiveSupport::TestCase
     ]
   end
 
-  def build_contract_with_abi(abi)
-    Contract.create!(chain: @chain, address: "0x" + SecureRandom.hex(20), abi: abi)
+  def build_contract_with_abi(abi, chain: @chain, address: nil)
+    Contract.create!(chain: chain, address: address || "0x" + SecureRandom.hex(20), abi: abi)
   end
 
   def claude_json(notice:, dev: nil, params: {}, returns: [])

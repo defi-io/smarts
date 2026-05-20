@@ -1,0 +1,110 @@
+<% content_for :head do %>
+  <title>Polymarket Live Odds — smarts.md</title>
+  <meta name="description" content="Live prediction market odds from Polymarket's top markets. Powered by on-chain data and CLOB prices.">
+<% end %>
+
+<div class="py-8">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-2">Polymarket Live Odds</h1>
+    <p class="text-gray-600">Top prediction markets by 24h volume · prices refresh every 30s</p>
+  </div>
+
+  <% if flash[:alert] %>
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-sm text-yellow-800">
+      <%= flash[:alert] %>
+    </div>
+  <% end %>
+
+  <%= turbo_frame_tag "polymarket_live_markets",
+                      data: {
+                        controller: "polymarket-prices-poll",
+                        polymarket_prices_poll_interval_value: 30_000,
+                        polymarket_prices_poll_frame_id_value: "polymarket_live_markets"
+                      } do %>
+    <% if @markets.present? %>
+      <div class="space-y-4">
+        <% @markets.each do |market| %>
+          <% disputed = market.slug.present? && @disputed_slugs&.include?(market.slug) %>
+          <div class="border <%= disputed ? "border-red-300 bg-red-50" : "border-gray-200" %> rounded-xl p-5 hover:border-blue-300 transition-colors">
+            <div class="flex items-start justify-between gap-4 mb-4">
+              <div class="flex-1 min-w-0">
+                <h2 class="text-lg font-semibold text-gray-900 leading-snug">
+                  <% if market.slug.present? %>
+                    <a href="https://polymarket.com/market/<%= market.slug %>" class="hover:text-blue-600 transition-colors" target="_blank" rel="noopener">
+                      <%= market.question %>
+                    </a>
+                  <% else %>
+                    <%= market.question %>
+                  <% end %>
+                </h2>
+                <% if market.neg_risk %>
+                  <span class="inline-block mt-1 text-[10px] uppercase tracking-wider text-gray-400 font-mono">multi-outcome</span>
+                <% end %>
+                <% if disputed %>
+                  <span class="inline-block mt-1 ml-2 text-[10px] uppercase tracking-wider text-red-700 font-semibold">disputed on UMA</span>
+                <% end %>
+              </div>
+              <% if market.volume_num %>
+                <div class="text-right shrink-0">
+                  <div class="text-xs text-gray-400">Volume</div>
+                  <div class="text-sm font-mono font-semibold text-gray-700">$<%= number_with_delimiter(market.volume_num.round(0).to_i) %></div>
+                </div>
+              <% end %>
+            </div>
+
+            <div class="flex flex-wrap gap-3">
+              <% market.tokens.each do |token| %>
+                <%
+                  live = @prices[token.token_id.to_s] || {}
+                  price = live[:mid_price] || token.price
+                  bid = live[:best_bid] || token.best_bid
+                  ask = live[:best_ask] || token.best_ask
+                %>
+                <div class="flex-1 min-w-[140px] bg-gray-50 rounded-lg p-3">
+                  <div class="text-xs text-gray-500 mb-1"><%= token.outcome %></div>
+                  <% if price %>
+                    <div class="text-2xl font-mono font-bold text-gray-900">
+                      <%= (price * 100).round(1) %>¢
+                    </div>
+                    <% if bid && ask %>
+                      <div class="text-[11px] text-gray-400 font-mono mt-0.5">
+                        <%= (bid * 100).round(1) %> / <%= (ask * 100).round(1) %>
+                      </div>
+                    <% end %>
+                  <% else %>
+                    <div class="text-sm text-gray-400">—</div>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+
+            <% if market.end_date.present? %>
+              <div class="text-xs text-gray-400 mt-3">
+                Ends <%= market.end_date.is_a?(String) ? market.end_date.split("T").first : market.end_date %>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="text-gray-500">No active markets found.</p>
+    <% end %>
+  <% end %>
+
+  <div class="mt-10 border-t border-gray-200 pt-6">
+    <h3 class="text-sm font-semibold text-gray-700 mb-2">Ask Your AI</h3>
+    <p class="text-sm text-gray-500 mb-3">Connect Smarts through MCP, then ask natural questions about Polymarket contracts and markets.</p>
+    <div class="bg-gray-50 rounded-lg p-4 text-sm text-gray-700 space-y-2">
+      <p>What are the current prices and outcome token IDs for this Polymarket market?</p>
+      <p>Audit how this market resolved on-chain and compare it with Polymarket's market status.</p>
+      <p>Check whether this wallet holds redeemable positions in these markets.</p>
+    </div>
+  </div>
+
+  <div class="mt-6 text-xs text-gray-400">
+    On-chain contracts:
+    <a href="/polymarket-ctf-exchange-v2-polygon" class="underline hover:text-gray-600">CTF Exchange V2</a> ·
+    <a href="/polymarket-neg-risk-exchange-v2-polygon" class="underline hover:text-gray-600">Neg Risk Exchange V2</a> ·
+    <a href="/polymarket-conditional-tokens-polygon" class="underline hover:text-gray-600">Conditional Tokens</a>
+  </div>
+</div>

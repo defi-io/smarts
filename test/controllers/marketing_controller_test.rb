@@ -25,6 +25,37 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
     assert_match %r{<a href="https://mcp\.smarts\.md/"[^>]*>connect your AI agent</a>}, response.body
   end
 
+  test "polymarket page uses natural-language AI prompts, not tool call syntax" do
+    market = PolymarketClient::Market.new(
+      condition_id: "0x" + ("12" * 32),
+      slug: "will-example-happen",
+      question: "Will example happen?",
+      outcomes: [ "Yes", "No" ],
+      clob_token_ids: [ "101", "202" ],
+      tokens: [
+        PolymarketClient::Token.new(outcome: "Yes", token_id: "101", price: BigDecimal("0.6")),
+        PolymarketClient::Token.new(outcome: "No", token_id: "202", price: BigDecimal("0.4"))
+      ],
+      active: true,
+      closed: false,
+      neg_risk: false,
+      volume_num: BigDecimal("1000")
+    )
+
+    stub_class_method(PolymarketClient, :fetch_top_markets, ->(limit:) { [ market ] }) do
+      stub_class_method(PolymarketClient, :fetch_live_prices, ->(_token_ids) { {} }) do
+        get "/polymarket"
+      end
+    end
+
+    assert_response :success
+    assert_match "Ask Your AI", response.body
+    assert_match "Audit how this market resolved on-chain", response.body
+    refute_match(/get_polymarket_\w+\(/, response.body)
+    refute_match(/read_contract_state\(/, response.body)
+    refute_match(/get_governance_timeline\(/, response.body)
+  end
+
   # Declares the homepage search form to Google so the sitelinks searchbox
   # becomes eligible on brand queries. If this JSON-LD is lost, the searchbox
   # quietly stops appearing — no error, just missing SERP surface area.
@@ -193,6 +224,18 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
     MarketingController::MCP_TOOLS.each do |tool|
       assert_match tool[:name], response.body, "expected tool #{tool[:name]} on mcp_docs"
     end
+  end
+
+  test "mcp_docs explains on-chain native Polymarket verification without tool mapping snippets" do
+    host! "mcp.smarts.md"
+    get "/"
+
+    assert_response :success
+    assert_match "On-chain native", response.body
+    assert_match "Audit how a Polymarket market resolved on-chain", response.body
+    assert_match "final payout vector", response.body
+    refute_match(/read_contract_state\(/, response.body)
+    refute_match(/get_polymarket_resolution\(/, response.body)
   end
 
   test "smarts.md root still renders the marketing home (not mcp_docs)" do

@@ -17,6 +17,12 @@
         <%= doc["notice"] %><%= ai_badge(source["notice"]) %>
       </p>
     <% end %>
+    <% if (context = polymarket_context_for(func)) %>
+      <p class="text-sm mt-2 opacity-80">
+        <span class="badge badge-sm badge-outline mr-1">Polymarket context</span>
+        <%= context %>
+      </p>
+    <% end %>
   </div>
   <div class="collapse-content">
     <% if doc["dev"].present? %>

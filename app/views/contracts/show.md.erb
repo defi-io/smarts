@@ -34,6 +34,44 @@ Setup for Claude Code, Cursor, Windsurf, Cline: <https://mcp.smarts.md/>
 <%= render @protocol_adapter.template_partial, adapter: @protocol_adapter %>
 <% end %>
 
+<% if @protocol_adapter.is_a?(ProtocolAdapters::PolymarketAdapter) %>
+## Architecture
+
+**Role:** <%= @protocol_adapter.display_name %>
+
+<%= @protocol_adapter.architecture_summary %>
+
+<% if @protocol_adapter.architecture_flow.any? %>
+**Flow:** <%= @protocol_adapter.architecture_flow.join(" → ") %>
+
+<% end %>
+<% if (comparison = @protocol_adapter.exchange_comparison) %>
+<%= comparison[:same_abi_note] %>
+
+- **Market type:** <%= comparison[:market_type] %>
+- **Token path:** <%= comparison[:token_path] %>
+- **Resolution path:** <%= comparison[:resolution_path] %>
+- **Compare with:** [<%= comparison[:paired_label] %>](/<%= comparison[:paired_slug] %>)
+
+<% end %>
+<%
+  context_items = (@contract.view_functions + @contract.write_functions + @contract.events).filter_map do |item|
+    context = polymarket_context_for(item)
+    next if context.blank?
+
+    [ function_signature_with_params(item), context ]
+  end
+%>
+<% if context_items.any? %>
+## Key contract context
+
+<% context_items.first(12).each do |signature, context| %>
+- `<%= signature %>` — <%= context %>
+<% end %>
+
+<% end %>
+<% end %>
+
 ## Admin & Risk
 
 <% if @admin_risk&.error.present? %>

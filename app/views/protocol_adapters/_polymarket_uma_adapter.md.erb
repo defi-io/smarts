@@ -1,1 +1,37 @@
-<%= render "protocol_adapters/polymarket_panel", adapter: adapter %>
+<% data = adapter.panel_data %>
+## Polymarket UMA Adapter
+
+Bridge to UMA Optimistic Oracle. Initializes questions for new markets,
+resolves them when the oracle answers, and surfaces disputes.
+
+<% if data[:errors].present? %>
+_Some reads failed: <%= data[:errors].map { |k, v| "#{k} (#{v})" }.join(", ") %>._
+<% end %>
+
+<% if data[:resolved].present? %>
+### Recently resolved
+
+<% data[:resolved].each do |q| %>
+- **<%= q.market_label %>** — payouts [<%= q.payouts.join(", ") %>]<% if q.slug %> (`<%= q.slug %>`)<% end %>
+<% end %>
+<% end %>
+
+<% if data[:initialized].present? %>
+### In-flight (awaiting resolution)
+
+<% data[:initialized].each do |q| %>
+- **<%= q.market_label %>**<% if q.slug %> (`<%= q.slug %>`)<% end %>
+<% end %>
+<% end %>
+
+<% if data[:disputed].present? %>
+### Disputed
+
+<% data[:disputed].each do |q| %>
+- **<%= q.market_label %>**<% if q.slug %> (`<%= q.slug %>`)<% end %>
+<% end %>
+<% end %>
+
+<% if data[:resolved].blank? && data[:initialized].blank? && data[:disputed].blank? %>
+_No UMA adapter activity in the last ~3h._
+<% end %>

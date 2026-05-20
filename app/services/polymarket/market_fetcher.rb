@@ -2,9 +2,9 @@
 
 module Polymarket
   class MarketFetcher
-    CACHE_TTL = 60.seconds
+    CACHE_TTL = 30.seconds
 
-    Outcome = Struct.new(:name, :token_id, :position_id, :price, keyword_init: true)
+    Outcome = Struct.new(:name, :token_id, :position_id, :price, :mid_price, :best_bid, :best_ask, keyword_init: true)
 
     Result = Struct.new(
       :protocol, :slug, :condition_id, :question, :outcomes, :neg_risk,
@@ -19,18 +19,19 @@ module Polymarket
         raise ArgumentError, "slug or condition_id required" if slug.blank? && condition_id.blank?
 
         cache_id = slug.present? ? "slug:#{slug}" : "condition:#{condition_id.to_s.downcase}"
-        Rails.cache.fetch("polymarket:market_fetcher:v2:#{cache_id}", expires_in: CACHE_TTL) do
+        Rails.cache.fetch("polymarket:market_fetcher:v3:#{cache_id}", expires_in: CACHE_TTL) do
           market = slug.present? ? PolymarketClient.fetch_market_by_slug(slug) : PolymarketClient.fetch_market_by_condition_id(condition_id)
           polygon = Chain.find_by!(slug: "polygon")
           resolution = ResolutionReader.call(chain: polygon, condition_id: market.condition_id)
           position_ids = derive_position_ids(polygon, market)
+          live_prices = fetch_live_prices(market)
 
           Result.new(
             protocol: "Polymarket",
             slug: market.slug,
             condition_id: market.condition_id,
             question: market.question,
-            outcomes: build_outcomes(market, position_ids),
+            outcomes: build_outcomes(market, position_ids, live_prices),
             neg_risk: market.neg_risk,
             state: resolution.state,
             payouts: resolution.payouts,
@@ -66,14 +67,28 @@ module Polymarket
         []
       end
 
-      def build_outcomes(market, position_ids)
+      def fetch_live_prices(market)
+        return {} unless market.active && !market.closed && market.enable_order_book
+
+        token_ids = market.tokens.map(&:token_id).compact
+        PolymarketClient.fetch_live_prices(token_ids)
+      rescue PolymarketClient::Error => e
+        Rails.logger.warn("[Polymarket::MarketFetcher] live price fetch failed: #{e.message}")
+        {}
+      end
+
+      def build_outcomes(market, position_ids, live_prices)
         market.outcomes.each_with_index.map do |name, index|
           token = market.tokens[index]
+          live = live_prices[token&.token_id] || {}
           Outcome.new(
             name: name,
             token_id: token&.token_id || market.clob_token_ids[index],
             position_id: position_ids[index],
-            price: token&.price
+            price: token&.price,
+            mid_price: live[:mid_price] || token&.mid_price,
+            best_bid: live[:best_bid] || token&.best_bid,
+            best_ask: live[:best_ask] || token&.best_ask
           )
         end
       end

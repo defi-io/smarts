@@ -20,4 +20,19 @@ class WarmupGovernanceCacheJobTest < ActiveJob::TestCase
       WarmupGovernanceCacheJob.perform_now
     end
   end
+
+  test "enqueues governance refreshes for every indexed Polymarket curated contract" do
+    polygon = chains(:polygon)
+    ContractSlugs.polymarket_slugs.each do |slug|
+      _chain_slug, address = ContractSlugs.resolve(slug)
+      Contract.find_or_create_by!(chain: polygon, address: address) do |contract|
+        contract.name = slug
+        contract.abi = []
+      end
+    end
+
+    assert_enqueued_jobs ContractSlugs.polymarket_slugs.length, only: GovernanceTimelineRefreshJob do
+      WarmupGovernanceCacheJob.perform_now
+    end
+  end
 end
