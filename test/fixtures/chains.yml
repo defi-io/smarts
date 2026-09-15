@@ -45,3 +45,11 @@ polygon:
   network_kind: mainnet
   explorer_api_url: https://api.etherscan.io/v2/api
   rpc_url: https://polygon-bor-rpc.publicnode.com
+
+robinhood:
+  name: Robinhood Chain
+  slug: robinhood
+  chain_id: 4663
+  network_kind: mainnet
+  explorer_api_url: https://robinhoodchain.blockscout.com/api
+  rpc_url: https://rpc.mainnet.chain.robinhood.com

@@ -89,6 +89,8 @@ mcp:
 
 external_apis:
   etherscan: Etherscan V2 API (多链统一 key)
+  blockscout: 链自有 Blockscout 实例的 Etherscan 兼容 /api
+              （当前用于 Robinhood Chain，见下方"区块浏览器数据源"）
   tvl_yields: DefiLlama API (free, 做速率限制)
   prices: CoinGecko API
   polymarket: Gamma + CLOB read-only APIs (Polymarket 例外，见下文)
@@ -117,7 +119,7 @@ external_apis:
 - ❌ 不引入 React / Vue / Svelte（用 Hotwire）
 - ❌ 不引入 Redis（用 Solid Cache / Solid Queue / Solid Cable 全覆盖）
 - ❌ 不引入 SPA 构建工具（esbuild/webpack 默认即可）
-- ❌ 不做未验证合约（只接受 Etherscan 已验证）
+- ❌ 不做未验证合约（只接受对应区块浏览器已验证：Etherscan V2 或 Blockscout）
 - ❌ 不做 Solana / Bitcoin / Move 系（仅 EVM）
 - ❌ 不做私有合约（即使用户提供 ABI 文件）
 
@@ -132,9 +134,26 @@ external_apis:
 Production 部署由 `bin/docker-entrypoint` 在 server 启动时自动跑 `Chains::Seeder.call`。
 
 **Tier 1 — `full`**：完整能力，live state + activity + governance + admin/risk + protocol adapters。
-- Ethereum (1) / Base (8453) / Arbitrum One (42161) / Optimism (10) / Polygon PoS (137) / BNB Smart Chain (56)
+- Ethereum (1) / Base (8453) / Arbitrum One (42161) / Optimism (10) / Polygon PoS (137) / BNB Smart Chain (56) / Robinhood Chain (4663)
 - 配置必备：`rpc_url`，所有链上读取走 `ChainReader::*`（Multicall3 + view caller + event decoder）
 - 适用于：Top DeFi 协议、需要 AI agent 查实时状态的合约
+
+**区块浏览器数据源**：源码 / ABI 默认走 Etherscan V2（`api.etherscan.io/v2/chainlist` 当前 62 条链）。
+Robinhood Chain 4663 虽已列入 Etherscan V2，但其新索引仍把已验证的 WETH implementation 标为
+未验证；目前继续走该链 Blockscout 实例的 Etherscan 兼容 `/api`。
+分发在 `Chain#explorer_client`（按 `explorer_api_url` 判断），两个 client 都继承 `ExplorerClient`，
+共用 `ExplorerClient::Error` / `NotVerifiedError`，所以加浏览器不动任何调用点。
+Blockscout 的三处差异（未验证无 sentinel、代理字段是 `IsProxy`/`ImplementationAddress`、ABI 内联在
+`getsourcecode`）都收在 `BlockscoutClient` 里。公共 Blockscout 实例限流很硬且无 key —— 只在
+"首次索引某合约"时打一次，之后落库，不要写批量抓取。
+
+**Robinhood Chain 的公共端点限流（2026-09 实测）**：Blockscout 和公共 RPC 都是"长惩罚期"限流——
+一次几十个请求的爆发会让**整个出口 IP** 被锁 30 分钟以上，不是滑动窗口。RPC 的 `eth_call` /
+Multicall3 很便宜（Live State 稳定可用），但 `eth_getLogs` 有独立的重方法预算，几次就打光，
+Activity / Governance 会返回 429。Robinhood 官方文档也明说公共 RPC "not recommended for
+production"。所以：这条链正式对外推之前，先拿 Blockscout API key（dev.blockscout.com），并通过
+`ROBINHOOD_RPC_URL` 配置 Alchemy endpoint；不要把 provider key 写进 seed 或数据库。未配置时继续
+使用 seed 里的公共 RPC，仅适合本地开发和低流量读取。
 
 **Tier 2 — `docs_only`**：只索引源代码 + ABI，不调 RPC。
 - 当前：Linea (59144)
@@ -287,7 +306,9 @@ smarts/
 │   │   │   ├── event_decoder.rb             # 事件日志解码
 │   │   │   └── proxy_resolver.rb            # EIP-1967 / 透明代理识别
 │   │   │
+│   │   ├── explorer_client.rb               # 浏览器 client 基类（错误类型 / 限流 / Faraday）
 │   │   ├── etherscan_client.rb              # Etherscan V2 API
+│   │   ├── blockscout_client.rb             # Blockscout 兼容 API（当前用于 Robinhood Chain）
 │   │   ├── defillama_client.rb              # DefiLlama
 │   │   ├── coingecko_client.rb              # CoinGecko
 │   │   │
@@ -603,5 +624,5 @@ MCP tools 只是**协议翻译层**，真正的业务逻辑在 Service Objects �
 
 ---
 
-_Last updated: 2026-04-24_  
+_Last updated: 2026-09-15_
 _Maintained by: Bob (汪晓明) with Claude_

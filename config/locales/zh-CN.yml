@@ -177,7 +177,7 @@
     home:
       badge: "为每个智能合约提供实时文档"
       subtitle: "无需离开页面的实时合约文档。"
-      description: "输入已验证的合约地址或从精选蓝筹合约开始。Smarts 覆盖 Ethereum、Base、Arbitrum、Optimism、BNB Smart Chain 和 Polygon。"
+      description: "输入已验证的合约地址或从精选蓝筹合约开始。Smarts 覆盖 Ethereum、Base、Arbitrum、Optimism、BNB Smart Chain、Polygon 和 Robinhood Chain。"
       stat_curated: "精选合约链接"
       stat_chains: "支持的链"
       go: "查询"
@@ -195,7 +195,7 @@
       benefit_2: "精选代币、流动池和协议合约。"
       benefit_3: "站点地图、结构化数据和 AI 代理工具端点。"
       curated_cta: "或从精选蓝筹合约开始"
-      search_helper: "粘贴任意已验证合约地址 · 我们支持 Ethereum、Base、BNB、Arbitrum、Optimism 和 Polygon"
+      search_helper: "粘贴任意已验证合约地址 · 我们支持 Ethereum、Base、BNB、Arbitrum、Optimism、Polygon 和 Robinhood Chain"
       latest_articles: "最新文章"
       browse_all: "浏览所有文章"
       featured_categories:

@@ -12,7 +12,7 @@ class GetRecentEventsTool < ApplicationTool
   input_schema(
     properties: {
       slug:       { type: "string",  description: "Curated slug like 'univ3-usdc-weth-eth' or 'usdc-eth'. Alternative to chain+address." },
-      chain:      { type: "string",  description: "Chain slug. Tier 1 (live data) only: eth, base, arbitrum, optimism, bnb, polygon. Tier 2 (docs-only) chains return an error. Required unless `slug` is given." },
+      chain:      { type: "string",  description: "Chain slug. Tier 1 (live data) only: eth, base, arbitrum, optimism, bnb, polygon, robinhood. Tier 2 (docs-only) chains return an error. Required unless `slug` is given." },
       address:    { type: "string",  description: "0x-prefixed contract address. Required unless `slug` is given." },
       event_name: { type: "string",  description: "Optional. Filter to a single event by ABI name (e.g. 'Transfer'). Server-side filter via topic0." },
       limit:      { type: "integer", description: "Number of events to return, 1..#{MAX_LIMIT}. Default #{DEFAULT_LIMIT}." }

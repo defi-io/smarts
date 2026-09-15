@@ -5,6 +5,28 @@ class ChainReader::BaseTest < ActiveSupport::TestCase
     @chain = chains(:ethereum)
   end
 
+  test "rpc_url_for uses the Robinhood provider URL when configured" do
+    chain = chains(:robinhood)
+    provider_url = "https://robinhood-mainnet.g.alchemy.com/v2/test-key"
+
+    assert_equal provider_url,
+      ChainReader::Base.rpc_url_for(chain, env: { "ROBINHOOD_RPC_URL" => provider_url })
+  end
+
+  test "rpc_url_for falls back to the seeded public endpoint" do
+    chain = chains(:robinhood)
+
+    assert_equal chain.rpc_url,
+      ChainReader::Base.rpc_url_for(chain, env: {})
+  end
+
+  test "rpc_url_for ignores the Robinhood override for other chains" do
+    provider_url = "https://robinhood-mainnet.g.alchemy.com/v2/test-key"
+
+    assert_equal @chain.rpc_url,
+      ChainReader::Base.rpc_url_for(@chain, env: { "ROBINHOOD_RPC_URL" => provider_url })
+  end
+
   test "selector computes 4-byte function selector" do
     assert_equal "0x18160ddd", ChainReader::Base.selector("totalSupply()")
     assert_equal "0x70a08231", ChainReader::Base.selector("balanceOf(address)")

@@ -51,14 +51,14 @@ class ContractsController < ApplicationController
         end
       end
     end
-  rescue EtherscanClient::NotVerifiedError
+  rescue ExplorerClient::NotVerifiedError
     @address = address
     @inspection = inspect_address(@chain, address)
     respond_to do |format|
       format.html { render :not_verified, status: :not_found }
       format.md   { render plain: unverified_markdown(@chain, address, @inspection), status: :not_found, content_type: "text/markdown" }
     end
-  rescue EtherscanClient::Error => e
+  rescue ExplorerClient::Error => e
     respond_to do |format|
       format.html do
         flash.now[:alert] = "Failed to fetch contract: #{e.message}"
@@ -120,7 +120,7 @@ class ContractsController < ApplicationController
   def find_or_fetch_contract(address)
     @contract = Contract.find_by(chain: @chain, address: address)
     if @contract.nil? || @contract.abi.blank?
-      info = EtherscanClient.new(@chain).fetch_contract_info(address)
+      info = @chain.explorer_client.fetch_contract_info(address)
       @contract = Contract.find_or_initialize_by(chain: @chain, address: address)
       @contract.update!(info)
     end

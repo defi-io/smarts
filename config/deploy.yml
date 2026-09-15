@@ -25,6 +25,7 @@ env:
   secret:
     - RAILS_MASTER_KEY
     - POSTGRES_PASSWORD
+    - ROBINHOOD_RPC_URL
   clear:
     RAILS_ENV: production
     DB_HOST: smarts-db

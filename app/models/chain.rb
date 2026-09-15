@@ -14,7 +14,7 @@ class Chain < ApplicationRecord
   # also persist this value in display_order so database reads can keep the same
   # order without depending on an in-memory catalog.
   DISPLAY_ORDER = %w[
-    eth base bnb arbitrum optimism polygon
+    eth base bnb arbitrum optimism polygon robinhood
     sepolia hoodi polygon-amoy arbitrum-sepolia linea-sepolia blast-sepolia celo-sepolia fraxtal-hoodi
     moonbeam moonriver moonbase opbnb opbnb-testnet xdc xdc-apothem unichain-sepolia world-sepolia berachain-bepolia
     monad monad-testnet hyperevm hyperevm-testnet katana bokuto sei sei-testnet stable stable-testnet plasma plasma-testnet megaeth megaeth-testnet
@@ -32,16 +32,29 @@ class Chain < ApplicationRecord
 
   # Gas-token symbol for each chain's native currency (shown in balance displays).
   NATIVE_SYMBOLS = {
-    "eth"      => "ETH",
-    "base"     => "ETH",
-    "arbitrum" => "ETH",
-    "optimism" => "ETH",
-    "bnb"      => "BNB",
-    "polygon"  => "MATIC"
+    "eth"       => "ETH",
+    "base"      => "ETH",
+    "arbitrum"  => "ETH",
+    "optimism"  => "ETH",
+    "bnb"       => "BNB",
+    "polygon"   => "MATIC",
+    "robinhood" => "ETH"
   }.freeze
 
   def etherscan_url
     explorer_api_url
+  end
+
+  # Picks the source/ABI client for this chain. Blockscout instances serve the
+  # same Etherscan-style endpoints under /api, so the seeded API URL is enough
+  # to identify them — the same inference EtherscanClient already uses to
+  # decide whether to send `chainid`.
+  def explorer_client
+    if explorer_api_url.to_s.include?("blockscout")
+      BlockscoutClient.new(self)
+    else
+      EtherscanClient.new(self)
+    end
   end
 
   def native_symbol

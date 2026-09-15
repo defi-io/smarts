@@ -11,7 +11,7 @@ class GetContractSourceTool < ApplicationTool
   input_schema(
     properties: {
       slug:    { type: "string", description: "Curated slug like 'uni-eth'. Alternative to chain+address." },
-      chain:   { type: "string", description: "Chain slug. Tier 1 (live data): eth, base, arbitrum, optimism, bnb, polygon. Tier 2 (source + ABI only): linea, unichain, berachain, blast, sonic, mantle, gnosis, celo, fraxtal, taiko, world, abstract. Required unless `slug` is given." },
+      chain:   { type: "string", description: "Chain slug. Tier 1 (live data): eth, base, arbitrum, optimism, bnb, polygon, robinhood. Tier 2 (source + ABI only): linea, unichain, berachain, blast, sonic, mantle, gnosis, celo, fraxtal, taiko, world, abstract. Required unless `slug` is given." },
       address: { type: "string", description: "0x-prefixed EVM contract address. Required unless `slug` given." },
       file:    { type: "string", description: "Optional. Path or basename of a single file to fetch (e.g. 'AaveToken.sol' or 'contracts/Token.sol'). Mutually exclusive with `search`." },
       search:  { type: "string", description: "Optional. Case-insensitive substring grep across every file. Returns up to 50 path/line/snippet hits. Mutually exclusive with `file`." }

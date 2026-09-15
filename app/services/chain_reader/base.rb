@@ -2,14 +2,27 @@ module ChainReader
   class Base
     class RpcError < StandardError; end
 
+    RPC_URL_ENV_KEYS = {
+      "robinhood" => "ROBINHOOD_RPC_URL"
+    }.freeze
+
     @clients = {}
     @mutex = Mutex.new
 
     class << self
       def client_for(chain)
+        rpc_url = rpc_url_for(chain)
         @mutex.synchronize do
-          @clients[chain.slug] ||= Eth::Client.create(chain.rpc_url)
+          @clients[[ chain.slug, rpc_url ]] ||= Eth::Client.create(rpc_url)
         end
+      end
+
+      # Keep provider credentials out of the database. A chain-specific
+      # environment variable can replace the public seeded endpoint in
+      # production while local development continues to work without setup.
+      def rpc_url_for(chain, env: ENV)
+        env_key = RPC_URL_ENV_KEYS[chain.slug]
+        env_key ? env[env_key].presence || chain.rpc_url : chain.rpc_url
       end
 
       def eth_call_hex(chain, to:, data:)

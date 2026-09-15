@@ -4,9 +4,11 @@ require "rails/test_help"
 require_relative "test_helpers/session_test_helper"
 require "webmock/minitest"
 
-# Throttling against Etherscan is a production-only concern; in tests every
-# request is WebMock-stubbed so the sleep buys nothing and just slows the suite.
+# Throttling against block explorers is a production-only concern; in tests
+# every request is WebMock-stubbed so the sleep buys nothing and just slows the
+# suite.
 EtherscanClient.throttle_interval = 0.0
+BlockscoutClient.throttle_interval = 0.0
 
 module SilenceEthFrozenStringWarnings
   def warn(message, category: nil, **)

@@ -43,6 +43,14 @@ CHAIN_SEEDS = [
     rpc_url: "https://polygon-bor-rpc.publicnode.com"
   },
   {
+    name: "Robinhood Chain", slug: "robinhood", chain_id: 4663, tier: "full",
+    # Etherscan V2 now lists chain 4663, but its new index still marks WETH's
+    # verified implementation as unverified. Keep Blockscout for source/ABI
+    # until Etherscan's proxy coverage is complete.
+    explorer_api_url: "https://robinhoodchain.blockscout.com/api",
+    rpc_url: "https://rpc.mainnet.chain.robinhood.com"
+  },
+  {
     name: "Ethereum Sepolia", slug: "sepolia", chain_id: 11_155_111, tier: "docs_only", network_kind: "testnet",
     explorer_api_url: "https://api.etherscan.io/v2/api",
     rpc_url: nil

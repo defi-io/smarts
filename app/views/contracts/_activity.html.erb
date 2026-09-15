@@ -12,7 +12,7 @@
 
     <% if @activity&.success? && @activity.latest_block %>
       <span class="text-xs opacity-60 font-mono"
-            title="Logs fetched from block #<%= @activity.from_block %> through #<%= @activity.latest_block %>; cached by EtherscanClient for up to 60s.">
+            title="Logs fetched from block #<%= @activity.from_block %> through #<%= @activity.latest_block %>; cached for up to 60s.">
         Blocks #<%= number_with_delimiter(@activity.from_block) %>–#<%= number_with_delimiter(@activity.latest_block) %>
       </span>
     <% end %>

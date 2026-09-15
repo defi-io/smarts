@@ -2,7 +2,7 @@ module SeoHelper
   SITE_NAME        = "Smarts".freeze
   SITE_URL         = "https://smarts.md".freeze
   DEFAULT_TITLE    = "Smarts — Live on-chain docs for every smart contract".freeze
-  DEFAULT_DESC     = "Live on-chain docs for every verified smart contract on Ethereum, Base, Arbitrum, Optimism, BNB Smart Chain, and Polygon. Point your AI agent at one URL.".freeze
+  DEFAULT_DESC     = "Live on-chain docs for every verified smart contract on Ethereum, Base, Arbitrum, Optimism, BNB Smart Chain, Polygon, and Robinhood Chain. Point your AI agent at one URL.".freeze
   DEFAULT_OG_IMAGE = "#{SITE_URL}/og-default.png".freeze
 
   # Set per-page SEO fields from a view. Any omitted field falls back to site
