@@ -7,7 +7,7 @@ class GetErc20InfoTool < ApplicationTool
   input_schema(
     properties: {
       slug:    { type: "string", description: "Curated slug like 'usdc-eth' or 'usdc-base'. Alternative to chain+address." },
-      chain:   { type: "string", description: "Chain slug. Tier 1 (live data) only: eth, base, arbitrum, optimism, bnb, polygon, robinhood. Tier 2 (docs-only) chains return an error. Required unless `slug` is given." },
+      chain:   { type: "string", description: "Chain slug. Tier 1 (live data) only: eth, base, arbitrum, optimism, bnb, polygon, robinhood, arc. Tier 2 (docs-only) chains return an error. Required unless `slug` is given." },
       address: { type: "string", description: "Token address (0x-prefixed). Required unless `slug` is given." }
     }
   )

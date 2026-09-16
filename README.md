@@ -1,6 +1,6 @@
 # smarts.md
 
-Live docs for every verified smart contract. Point your AI agent at one URL and ask about any contract on Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, or Robinhood Chain.
+Live docs for every verified smart contract. Point your AI agent at one URL and ask about any contract on Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, or Arc.
 
 - Web: <https://smarts.md>
 - MCP endpoint: `https://smarts.md/mcp` (Streamable HTTP, MCP spec 2025-03-26)

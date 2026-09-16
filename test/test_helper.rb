@@ -9,6 +9,7 @@ require "webmock/minitest"
 # suite.
 EtherscanClient.throttle_interval = 0.0
 BlockscoutClient.throttle_interval = 0.0
+SourcifyClient.throttle_interval = 0.0
 
 module SilenceEthFrozenStringWarnings
   def warn(message, category: nil, **)

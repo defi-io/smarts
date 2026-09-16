@@ -3,7 +3,8 @@ module ChainReader
     class RpcError < StandardError; end
 
     RPC_URL_ENV_KEYS = {
-      "robinhood" => "ROBINHOOD_RPC_URL"
+      "robinhood" => "ROBINHOOD_RPC_URL",
+      "arc" => "ARC_RPC_URL"
     }.freeze
 
     @clients = {}

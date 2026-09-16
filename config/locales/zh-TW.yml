@@ -177,7 +177,7 @@
     home:
       badge: "為每個智能合約提供即時文件"
       subtitle: "無需離開頁面的即時合約文件。"
-      description: "輸入已驗證的合約地址或從精選藍籌合約開始。Smarts 涵蓋 Ethereum、Base、Arbitrum、Optimism、BNB Smart Chain、Polygon 和 Robinhood Chain。"
+      description: "輸入已驗證的合約地址或從精選藍籌合約開始。Smarts 涵蓋 Ethereum、Base、Arbitrum、Optimism、BNB Smart Chain、Polygon、Robinhood Chain 和 Arc。"
       stat_curated: "精選合約連結"
       stat_chains: "支援的鏈"
       go: "查詢"
@@ -195,7 +195,7 @@
       benefit_2: "精選代幣、流動池和協議合約。"
       benefit_3: "網站地圖、結構化資料和 AI 代理工具端點。"
       curated_cta: "或從精選藍籌合約開始"
-      search_helper: "貼上任意已驗證合約地址 · 我們支援 Ethereum、Base、BNB、Arbitrum、Optimism、Polygon 和 Robinhood Chain"
+      search_helper: "貼上任意已驗證合約地址 · 我們支援 Ethereum、Base、BNB、Arbitrum、Optimism、Polygon、Robinhood Chain 和 Arc"
       latest_articles: "最新文章"
       browse_all: "瀏覽所有文章"
       featured_categories:

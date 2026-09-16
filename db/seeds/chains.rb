@@ -51,6 +51,15 @@ CHAIN_SEEDS = [
     rpc_url: "https://rpc.mainnet.chain.robinhood.com"
   },
   {
+    name: "Arc", slug: "arc", chain_id: 5042, tier: "full",
+    # Etherscan V2 does not list chain 5042 (checked 2026-09-16 against
+    # api.etherscan.io/v2/chainlist, 62 chains), and Circle's own explorer at
+    # explorer.arc.io is gated behind Cloudflare Access. Sourcify registers Arc
+    # as `supported: true`, so it is the only public route to verified source.
+    explorer_api_url: "https://sourcify.dev/server",
+    rpc_url: "https://rpc.mainnet.arc.io"
+  },
+  {
     name: "Ethereum Sepolia", slug: "sepolia", chain_id: 11_155_111, tier: "docs_only", network_kind: "testnet",
     explorer_api_url: "https://api.etherscan.io/v2/api",
     rpc_url: nil
@@ -209,6 +218,14 @@ CHAIN_SEEDS = [
     name: "MegaETH Testnet", slug: "megaeth-testnet", chain_id: 6_343, tier: "docs_only", network_kind: "testnet",
     explorer_api_url: "https://api.etherscan.io/v2/api",
     rpc_url: nil
+  },
+  {
+    name: "Arc Testnet", slug: "arc-testnet", chain_id: 5_042_002, tier: "docs_only", network_kind: "testnet",
+    # Unlike mainnet, the Arc testnet explorer is a public Blockscout with the
+    # Etherscan-compatible /api shim enabled (its `proxy` module is off, which
+    # we never use — events go through RPC).
+    explorer_api_url: "https://testnet.arcscan.app/api",
+    rpc_url: "https://rpc.testnet.arc.io"
   },
 
   # ── Tier 2 — docs_only: Etherscan source/ABI only, no RPC, no live data. ─
@@ -434,6 +451,14 @@ CHAIN_PRESENTATION = {
   "megaeth-testnet" => {
     docs_url: "https://docs.megaeth.com/testnet",
     faucet_url: "https://testnet.megaeth.com"
+  },
+  "arc" => {
+    summary: "Circle's Arc L1: native USDC gas, EURC and USYC, and the StableFX settlement escrow.",
+    docs_url: "https://docs.arc.io/arc/references/contract-addresses"
+  },
+  "arc-testnet" => {
+    docs_url: "https://docs.arc.io/arc/references/contract-addresses",
+    faucet_url: "https://faucet.circle.com"
   },
   "linea" => {
     summary: "Docs-only Linea contracts from the ecosystem's native tokens and leading apps.",

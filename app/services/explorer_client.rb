@@ -1,8 +1,9 @@
 # Shared behaviour for block-explorer source/ABI clients.
 #
-# Two implementations exist: EtherscanClient (Etherscan V2) and
-# BlockscoutClient (currently used for Robinhood Chain while Etherscan's new
-# index has incomplete proxy coverage).
+# Three implementations exist: EtherscanClient (Etherscan V2), BlockscoutClient
+# (currently used for Robinhood Chain while Etherscan's new index has
+# incomplete proxy coverage), and SourcifyClient (used for Arc, which no public
+# Etherscan or Blockscout instance indexes).
 # Callers reach the right one through `Chain#explorer_client` and rescue the
 # error classes defined here, so adding an explorer never touches call sites.
 class ExplorerClient
@@ -74,7 +75,7 @@ class ExplorerClient
   # JSON exceptions the callers don't rescue.
   def get_body(params)
     self.class.throttle!
-    response = connection.get do |req|
+    response = connection.get(request_path(params)) do |req|
       req.params = request_params(params)
     end
 
@@ -101,6 +102,15 @@ class ExplorerClient
 
   def request_params(params)
     params
+  end
+
+  # Path appended to `explorer_api_url` for this request. Etherscan-style APIs
+  # put everything in the query string and return nil; Sourcify addresses a
+  # contract by path (`v2/contract/<chain>/<address>`). Faraday guarantees the
+  # base gets a trailing slash before merging, so a relative path here is
+  # appended to `explorer_api_url` rather than replacing its last segment.
+  def request_path(_params)
+    nil
   end
 
   # The attribute hash `Contract#update!` expects, built once so both clients

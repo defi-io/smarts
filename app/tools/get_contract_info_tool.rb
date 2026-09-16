@@ -7,7 +7,7 @@ class GetContractInfoTool < ApplicationTool
   input_schema(
     properties: {
       slug:    { type: "string", description: "Curated slug like 'uni-eth' or 'univ3-usdc-weth-eth'. Alternative to chain+address." },
-      chain:   { type: "string", description: "Chain slug. Tier 1 (live data): eth, base, arbitrum, optimism, bnb, polygon, robinhood. Tier 2 (source + ABI only): linea, unichain, berachain, blast, sonic, mantle, gnosis, celo, fraxtal, taiko, world, abstract. Required unless `slug` is given." },
+      chain:   { type: "string", description: "Chain slug. Tier 1 (live data): eth, base, arbitrum, optimism, bnb, polygon, robinhood, arc. Tier 2 (source + ABI only): linea, unichain, berachain, blast, sonic, mantle, gnosis, celo, fraxtal, taiko, world, abstract. Required unless `slug` is given." },
       address: { type: "string", description: "The 0x-prefixed EVM contract address. Required unless `slug` is given." }
     }
   )
