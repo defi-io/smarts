@@ -7,8 +7,12 @@ module ChainReader
     CACHE_TTL = 5.minutes
 
     Result = Struct.new(:is_contract, :balance_wei, :tx_count, :ens_name, keyword_init: true) do
+      # `is_contract` is deliberately three-valued: true / false / nil, where
+      # nil means the RPC call failed and we don't know. Compare explicitly
+      # rather than negating — `!nil` is true, which would turn "we couldn't
+      # reach the node" into a confident "this is a wallet".
       def eoa?
-        !is_contract
+        is_contract == false
       end
 
       def balance_eth
@@ -55,13 +59,15 @@ module ChainReader
     def fetch_code
       raw = client.eth_get_code(@address, "latest")
       raw.is_a?(Hash) ? raw["result"] : raw
-    rescue StandardError
+    rescue StandardError => e
+      log_rpc_failure(:eth_getCode, e)
       nil
     end
 
     def fetch_balance
       client.get_balance(@address)
-    rescue StandardError
+    rescue StandardError => e
+      log_rpc_failure(:eth_getBalance, e)
       nil
     end
 
@@ -69,8 +75,20 @@ module ChainReader
       raw = client.eth_get_transaction_count(@address, "latest")
       hex = raw.is_a?(Hash) ? raw["result"] || raw.dig("result") : raw
       hex.is_a?(String) ? hex.to_i(16) : nil
-    rescue StandardError
+    rescue StandardError => e
+      log_rpc_failure(:eth_getTransactionCount, e)
       nil
+    end
+
+    # These rescues are what keep one dead RPC method from blanking the whole
+    # page, but silently swallowing them makes a node that is refusing us
+    # indistinguishable from an address with no code. Name the endpoint so the
+    # cause is recoverable from production logs.
+    def log_rpc_failure(method, error)
+      Rails.logger.warn(
+        "[AddressInspector] #{method} failed on #{@chain.slug} " \
+        "(#{Base.rpc_url_for(@chain)}) for #{@address}: #{error.class}: #{error.message}"
+      )
     end
 
     # Returns true for a "real" contract (deployed bytecode), false for a
