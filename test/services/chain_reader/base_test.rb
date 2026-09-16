@@ -318,4 +318,28 @@ class ChainReader::BaseTest < ActiveSupport::TestCase
       @response.respond_to?(:call) ? @response.call : @response
     end
   end
+
+  # Regression: `.kamal/secrets` used bash's ${VAR:-default}, which Kamal does
+  # not implement — the container received ARC_RPC_URL=":-https://rpc.mainnet.arc.io}"
+  # and Eth::Client.create raised "Unable to detect client type!", silently
+  # taking every Arc read offline. A bad override must never beat the seeded URL.
+  test "rpc_url_for ignores an override that is not a usable endpoint" do
+    chain = Chain.new(slug: "arc", rpc_url: "https://rpc.mainnet.arc.io")
+
+    assert_equal "https://rpc.mainnet.arc.io",
+                 ChainReader::Base.rpc_url_for(chain, env: { "ARC_RPC_URL" => ":-https://rpc.mainnet.arc.io}" })
+    assert_equal "https://rpc.mainnet.arc.io",
+                 ChainReader::Base.rpc_url_for(chain, env: { "ARC_RPC_URL" => "" })
+    assert_equal "https://rpc.mainnet.arc.io",
+                 ChainReader::Base.rpc_url_for(chain, env: {})
+  end
+
+  test "rpc_url_for honours a well-formed override" do
+    chain = Chain.new(slug: "arc", rpc_url: "https://rpc.mainnet.arc.io")
+
+    assert_equal "https://arc.example/key",
+                 ChainReader::Base.rpc_url_for(chain, env: { "ARC_RPC_URL" => "https://arc.example/key" })
+    assert_equal "wss://arc.example/ws",
+                 ChainReader::Base.rpc_url_for(chain, env: { "ARC_RPC_URL" => "wss://arc.example/ws" })
+  end
 end

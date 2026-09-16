@@ -21,9 +21,30 @@ module ChainReader
       # Keep provider credentials out of the database. A chain-specific
       # environment variable can replace the public seeded endpoint in
       # production while local development continues to work without setup.
+      #
+      # The override is only honoured if it actually looks like an endpoint.
+      # A malformed value silently takes a whole chain offline — Eth::Client
+      # raises "Unable to detect client type!" and every read degrades to
+      # "unknown" — and that is a worse outcome than ignoring a bad override,
+      # since the seeded public URL still works.
       def rpc_url_for(chain, env: ENV)
         env_key = RPC_URL_ENV_KEYS[chain.slug]
-        env_key ? env[env_key].presence || chain.rpc_url : chain.rpc_url
+        return chain.rpc_url unless env_key
+
+        override = env[env_key].to_s.strip
+        return override if usable_rpc_url?(override)
+
+        unless override.empty?
+          Rails.logger.warn(
+            "[ChainReader] ignoring malformed #{env_key}=#{override.inspect}; " \
+            "falling back to the seeded #{chain.slug} endpoint"
+          )
+        end
+        chain.rpc_url
+      end
+
+      def usable_rpc_url?(url)
+        url.start_with?("http://", "https://", "ws://", "wss://")
       end
 
       def eth_call_hex(chain, to:, data:)
