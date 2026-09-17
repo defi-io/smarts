@@ -1,8 +1,8 @@
-# Sourcify's verification API, used for chains that no public Etherscan or
-# Blockscout instance indexes. Arc is the first: Etherscan V2's chainlist does
-# not include chain 5042, and Circle's own explorer (explorer.arc.io) sits
-# behind Cloudflare Access, so Sourcify is the only public source of verified
-# source and ABI for the chain.
+# Sourcify's verification API, used when the available Etherscan or Blockscout
+# index is not complete enough for our contracts. Arc is the first: ArcScan and
+# Etherscan V2 support chain 5042, but their launch-day source index cannot yet
+# serve any of our six curated contracts end-to-end. Sourcify remains the
+# source/ABI backend while ArcScan is used for user-facing explorer links.
 #
 # Unlike the other two clients this is not an Etherscan-shaped API, so it does
 # not go through `ExplorerClient#request`:

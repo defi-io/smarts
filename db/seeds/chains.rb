@@ -52,10 +52,10 @@ CHAIN_SEEDS = [
   },
   {
     name: "Arc", slug: "arc", chain_id: 5042, tier: "full",
-    # Etherscan V2 does not list chain 5042 (checked 2026-09-16 against
-    # api.etherscan.io/v2/chainlist, 62 chains), and Circle's own explorer at
-    # explorer.arc.io is gated behind Cloudflare Access. Sourcify registers Arc
-    # as `supported: true`, so it is the only public route to verified source.
+    # ArcScan and Etherscan V2 added chain 5042 on 2026-09-16, but their source
+    # index is not ready for Smarts yet: none of our six curated contracts can
+    # be fetched end-to-end (USDC's proxy is verified, but its implementation
+    # is not). Keep source/ABI on Sourcify while exposing ArcScan to users.
     explorer_api_url: "https://sourcify.dev/server",
     rpc_url: "https://rpc.mainnet.arc.io"
   },
@@ -454,7 +454,9 @@ CHAIN_PRESENTATION = {
   },
   "arc" => {
     summary: "Circle's Arc L1: native USDC gas, EURC and USYC, and the StableFX settlement escrow.",
-    docs_url: "https://docs.arc.io/arc/references/contract-addresses"
+    docs_url: "https://docs.arc.io/arc/references/contract-addresses",
+    explorer_url: "https://arc.etherscan.io",
+    verify_url: "https://arc.etherscan.io/verifyContract"
   },
   "arc-testnet" => {
     docs_url: "https://docs.arc.io/arc/references/contract-addresses",

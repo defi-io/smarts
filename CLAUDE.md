@@ -91,7 +91,7 @@ external_apis:
   etherscan: Etherscan V2 API (多链统一 key)
   blockscout: 链自有 Blockscout 实例的 Etherscan 兼容 /api
               （当前用于 Robinhood Chain，见下方"区块浏览器数据源"）
-  sourcify: Sourcify 验证 API（当前用于 Arc，该链无任何公开 explorer 索引）
+  sourcify: Sourcify 验证 API（当前用于 Arc；ArcScan 已上线，但源码索引尚不完整）
   tvl_yields: DefiLlama API (free, 做速率限制)
   prices: CoinGecko API
   polymarket: Gamma + CLOB read-only APIs (Polymarket 例外，见下文)
@@ -139,7 +139,7 @@ Production 部署由 `bin/docker-entrypoint` 在 server 启动时自动跑 `Chai
 - 配置必备：`rpc_url`，所有链上读取走 `ChainReader::*`（Multicall3 + view caller + event decoder）
 - 适用于：Top DeFi 协议、需要 AI agent 查实时状态的合约
 
-**区块浏览器数据源**：源码 / ABI 默认走 Etherscan V2（`api.etherscan.io/v2/chainlist` 当前 62 条链）。
+**区块浏览器数据源**：源码 / ABI 默认走 Etherscan V2（`api.etherscan.io/v2/chainlist` 当前 63 条链）。
 Robinhood Chain 4663 虽已列入 Etherscan V2，但其新索引仍把已验证的 WETH implementation 标为
 未验证；目前继续走该链 Blockscout 实例的 Etherscan 兼容 `/api`。
 分发在 `Chain#explorer_client`（按 `explorer_api_url` 判断），三个 client 都继承 `ExplorerClient`，
@@ -149,17 +149,17 @@ Blockscout 的三处差异（未验证无 sentinel、代理字段是 `IsProxy`/`
 "首次索引某合约"时打一次，之后落库，不要写批量抓取。
 
 **Arc（5042）的数据源 —— 与其他链都不同（2026-09-16 实测）**：
-- Etherscan V2 的 chainlist（62 条链）**不含 Arc**；Circle 自己的 `explorer.arc.io` 挡在
-  Cloudflare Access SSO 后面。所以源码/ABI 走 **Sourcify**，是目前唯一公开途径。
+- `arc.etherscan.io`（ArcScan）已经上线，Etherscan V2 chainlist 也已收录 Arc。用户侧的地址、
+  交易和验证链接都走 ArcScan；源码/ABI 暂时仍走 **Sourcify**。
 - Sourcify 不是 Etherscan 形状：按路径寻址 `v2/contract/<chainId>/<address>`，没有
   `status`/`message` 信封，未验证时返回 HTTP 404 且 `match` 为 null。差异全部收在
   `SourcifyClient` 里，基类只多了一个 `request_path` 扩展点。
 - Sourcify 自带 proxy 解析（`proxyResolution.implementations[]`），且 `sources` 直接就是
   `{path => {content}}`，不需要像 Blockscout 那样重组 `AdditionalSources`。
-- ⚠️ **上线当天 Sourcify 上 Arc 的已验证合约数为 0**（Sourcify 是 opt-in，项目方要自己推）。
-  在有人开始推验证之前，`get_contract_source` / 合约页对 Arc 会一律 NotVerified。
-  RPC 侧的工具（live state / ERC-20 / events / Uniswap V3）**不受影响，立即可用**。
-  值得定期探测 `explorer.arc.io` 是否转为公开——一旦开放，它比 Sourcify 好用。
+- ⚠️ ArcScan 上线当天的源码索引仍很稀疏：项目收录的六个合约中，USDC 只有 proxy 已验证，
+  implementation 未验证，其余五个也无法由 Etherscan API 完整读取，因此切换会造成回归。
+  Sourcify 当前至少可完整读取 Permit2。继续定期探测这六个地址，覆盖率不低于 Sourcify 后
+  再把 `explorer_api_url` 切到 Etherscan V2。RPC 侧工具不受此选择影响。
 - gas token 是**原生 USDC**（`0x3600…0000` predeploy），不是 ETH；`NATIVE_SYMBOLS` 已特判。
   注意其内部 18 decimals 而 ERC-20 表面 6 decimals，transfer 由 system emitter 发出。
 - 公共 RPC `rpc.mainnet.arc.io`（另有 QuickNode / Blockdaemon / dRPC 镜像）实测

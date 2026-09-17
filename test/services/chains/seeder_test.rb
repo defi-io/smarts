@@ -80,6 +80,16 @@ class Chains::SeederTest < ActiveSupport::TestCase
     assert_equal "Ethereum", chain.reload.name
   end
 
+  test "Arc uses ArcScan links while source and ABI remain on Sourcify" do
+    Chains::Seeder.call
+    arc = Chain.find_by!(slug: "arc")
+
+    assert_equal "https://sourcify.dev/server", arc.explorer_api_url
+    assert_equal "https://arc.etherscan.io", arc.explorer_url
+    assert_equal "https://arc.etherscan.io/verifyContract", arc.verify_url
+    assert_instance_of SourcifyClient, arc.explorer_client
+  end
+
   test "catalog chains assemble contracts from persisted catalog rows" do
     Chains::Seeder.call
     eth = Chain.find_by!(slug: "eth")

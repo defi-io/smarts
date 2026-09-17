@@ -193,7 +193,8 @@ module ContractsHelper
     "arbitrum" => "https://arbiscan.io",
     "optimism" => "https://optimistic.etherscan.io",
     "bnb"      => "https://bscscan.com",
-    "polygon"  => "https://polygonscan.com"
+    "polygon"  => "https://polygonscan.com",
+    "arc"      => "https://arc.etherscan.io"
   }.freeze
 
   def explorer_address_url(chain, address)
@@ -218,6 +219,7 @@ module ContractsHelper
     when "optimism" then "Etherscan"
     when "bnb"      then "BscScan"
     when "polygon"  then "Polygonscan"
+    when "arc"      then "ArcScan"
     else "explorer"
     end
   end
