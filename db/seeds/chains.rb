@@ -116,12 +116,14 @@ CHAIN_SEEDS = [
   },
   {
     name: "opBNB", slug: "opbnb", chain_id: 204, tier: "docs_only", network_kind: "mainnet",
-    explorer_api_url: "https://api.etherscan.io/v2/api",
+    # Etherscan V2 dropped opBNB (chain IDs 204/5611) on 2026-10-12; Sourcify serves both.
+    explorer_api_url: "https://sourcify.dev/server",
     rpc_url: nil
   },
   {
     name: "opBNB Testnet", slug: "opbnb-testnet", chain_id: 5_611, tier: "docs_only", network_kind: "testnet",
-    explorer_api_url: "https://api.etherscan.io/v2/api",
+    # Etherscan V2 dropped opBNB (chain IDs 204/5611) on 2026-10-12; Sourcify serves both.
+    explorer_api_url: "https://sourcify.dev/server",
     rpc_url: nil
   },
   {
