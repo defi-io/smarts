@@ -212,7 +212,7 @@ en:
     home:
       badge: "Live docs for every smart contract"
       subtitle: "Live contract docs without leaving the page."
-      description: "Enter a verified contract address or start from a curated blue chip. Smarts covers Ethereum, Base, Arbitrum, Optimism, BNB Smart Chain, and Polygon."
+      description: "Enter a verified contract address or start from a curated blue chip. Smarts covers Ethereum, Base, Arbitrum, Optimism, BNB Smart Chain, Polygon, Robinhood Chain, and Arc."
       stat_curated: "curated contract URLs"
       stat_chains: "supported chains"
       go: "Go"
@@ -230,7 +230,7 @@ en:
       benefit_2: "Curated tokens, pools, and protocol contracts."
       benefit_3: "Sitemap, structured data, and tool endpoints for agents."
       curated_cta: "Or start from a curated blue chip"
-      search_helper: "Paste any verified contract address · We support Ethereum, Base, BNB, Arbitrum, Optimism, and Polygon"
+      search_helper: "Paste any verified contract address · We support Ethereum, Base, BNB, Arbitrum, Optimism, Polygon, Robinhood Chain, and Arc"
       latest_articles: "Latest articles"
       browse_all: "Browse all articles"
       featured_categories:

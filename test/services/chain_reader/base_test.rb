@@ -5,6 +5,28 @@ class ChainReader::BaseTest < ActiveSupport::TestCase
     @chain = chains(:ethereum)
   end
 
+  test "rpc_url_for uses the Robinhood provider URL when configured" do
+    chain = chains(:robinhood)
+    provider_url = "https://robinhood-mainnet.g.alchemy.com/v2/test-key"
+
+    assert_equal provider_url,
+      ChainReader::Base.rpc_url_for(chain, env: { "ROBINHOOD_RPC_URL" => provider_url })
+  end
+
+  test "rpc_url_for falls back to the seeded public endpoint" do
+    chain = chains(:robinhood)
+
+    assert_equal chain.rpc_url,
+      ChainReader::Base.rpc_url_for(chain, env: {})
+  end
+
+  test "rpc_url_for ignores the Robinhood override for other chains" do
+    provider_url = "https://robinhood-mainnet.g.alchemy.com/v2/test-key"
+
+    assert_equal @chain.rpc_url,
+      ChainReader::Base.rpc_url_for(@chain, env: { "ROBINHOOD_RPC_URL" => provider_url })
+  end
+
   test "selector computes 4-byte function selector" do
     assert_equal "0x18160ddd", ChainReader::Base.selector("totalSupply()")
     assert_equal "0x70a08231", ChainReader::Base.selector("balanceOf(address)")
@@ -295,5 +317,29 @@ class ChainReader::BaseTest < ActiveSupport::TestCase
     def call_response
       @response.respond_to?(:call) ? @response.call : @response
     end
+  end
+
+  # Regression: `.kamal/secrets` used bash's ${VAR:-default}, which Kamal does
+  # not implement — the container received ARC_RPC_URL=":-https://rpc.mainnet.arc.io}"
+  # and Eth::Client.create raised "Unable to detect client type!", silently
+  # taking every Arc read offline. A bad override must never beat the seeded URL.
+  test "rpc_url_for ignores an override that is not a usable endpoint" do
+    chain = Chain.new(slug: "arc", rpc_url: "https://rpc.mainnet.arc.io")
+
+    assert_equal "https://rpc.mainnet.arc.io",
+                 ChainReader::Base.rpc_url_for(chain, env: { "ARC_RPC_URL" => ":-https://rpc.mainnet.arc.io}" })
+    assert_equal "https://rpc.mainnet.arc.io",
+                 ChainReader::Base.rpc_url_for(chain, env: { "ARC_RPC_URL" => "" })
+    assert_equal "https://rpc.mainnet.arc.io",
+                 ChainReader::Base.rpc_url_for(chain, env: {})
+  end
+
+  test "rpc_url_for honours a well-formed override" do
+    chain = Chain.new(slug: "arc", rpc_url: "https://rpc.mainnet.arc.io")
+
+    assert_equal "https://arc.example/key",
+                 ChainReader::Base.rpc_url_for(chain, env: { "ARC_RPC_URL" => "https://arc.example/key" })
+    assert_equal "wss://arc.example/ws",
+                 ChainReader::Base.rpc_url_for(chain, env: { "ARC_RPC_URL" => "wss://arc.example/ws" })
   end
 end

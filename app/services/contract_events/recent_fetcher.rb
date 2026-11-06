@@ -64,26 +64,30 @@ module ContractEvents
 
       events = raw_logs.reverse.first(@limit).map { |log| build_event(log) }
       result(latest_block: latest, from_block: from, count: events.size, events: events)
-    rescue EtherscanClient::Error, ChainReader::Base::RpcError => e
+    rescue ExplorerClient::Error, ChainReader::Base::RpcError => e
       error_result("Recent activity on #{@contract.chain.name} failed: #{e.message}")
     end
 
     private
 
-    # On eth mainnet: try Etherscan first (richer response with timestamps),
-    # fall back to RPC on dynamic failure. On other chains: free-tier
-    # Etherscan can't serve logs, go straight to RPC.
-    def fetch_logs(from, latest)
-      return rpc_get_logs_with_adaptive_window(from, latest) unless EtherscanClient.logs_supported?(@contract.chain)
+    def explorer
+      @explorer ||= @contract.chain.explorer_client
+    end
 
-      EtherscanClient.new(@contract.chain).get_logs(
+    # On eth mainnet: try Etherscan first (richer response with timestamps),
+    # fall back to RPC on dynamic failure. Everywhere else the explorer can't
+    # serve logs (free-tier Etherscan, or Blockscout), go straight to RPC.
+    def fetch_logs(from, latest)
+      return rpc_get_logs_with_adaptive_window(from, latest) unless explorer.logs_supported?
+
+      explorer.get_logs(
         address: @contract.address,
         topic0: topic0,
         from_block: from,
         to_block: latest,
         offset: ETHERSCAN_MAX_OFFSET
       )
-    rescue EtherscanClient::Error => etherscan_error
+    rescue ExplorerClient::Error => etherscan_error
       Rails.logger.info("[RecentFetcher] Etherscan logs failed (#{etherscan_error.message}), falling back to RPC")
       begin
         rpc_get_logs_with_adaptive_window(from, latest)
@@ -123,8 +127,13 @@ module ContractEvents
       target_event && ChainReader::EventDecoder.event_topic0(target_event)
     end
 
+    # Node-specific ways of saying "that range matched too much" — all mean the
+    # same thing: retry over a narrower window. Robinhood Chain's public RPC
+    # phrases it "logs matched by query exceeds limit of 10000", which matters
+    # there more than elsewhere: 100ms blocks put ~34k WETH Transfers inside
+    # the default 5,000-block window.
     def shrinkable_rpc_error?(error)
-      error.message.match?(/exceeds max results|too many results|response size|query timeout|limit exceeded/i)
+      error.message.match?(/exceeds max results|exceeds limit|too many results|response size|query timeout|limit exceeded/i)
     end
 
     def build_event(raw_log)

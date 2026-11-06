@@ -354,6 +354,7 @@ class ContractsHelperTest < ActionView::TestCase
     optimism = OpenStruct.new(slug: "optimism")
     bnb      = OpenStruct.new(slug: "bnb")
     polygon  = OpenStruct.new(slug: "polygon")
+    arc      = OpenStruct.new(slug: "arc")
 
     assert_equal "https://etherscan.io/address/0xabc",            explorer_address_url(eth,      "0xabc")
     assert_equal "https://basescan.org/address/0xabc",            explorer_address_url(base,     "0xabc")
@@ -361,6 +362,11 @@ class ContractsHelperTest < ActionView::TestCase
     assert_equal "https://optimistic.etherscan.io/address/0xabc", explorer_address_url(optimism, "0xabc")
     assert_equal "https://bscscan.com/address/0xabc",             explorer_address_url(bnb,      "0xabc")
     assert_equal "https://polygonscan.com/address/0xabc",         explorer_address_url(polygon,  "0xabc")
+    assert_equal "https://arc.etherscan.io/address/0xabc",        explorer_address_url(arc,      "0xabc")
+  end
+
+  test "explorer_tx_url maps Arc transactions to ArcScan" do
+    assert_equal "https://arc.etherscan.io/tx/0xdef", explorer_tx_url(OpenStruct.new(slug: "arc"), "0xdef")
   end
 
   test "explorer_address_url returns nil for unknown chain slug" do
@@ -374,6 +380,7 @@ class ContractsHelperTest < ActionView::TestCase
     assert_equal "Etherscan",   explorer_name(OpenStruct.new(slug: "optimism"))
     assert_equal "BscScan",     explorer_name(OpenStruct.new(slug: "bnb"))
     assert_equal "Polygonscan", explorer_name(OpenStruct.new(slug: "polygon"))
+    assert_equal "ArcScan",     explorer_name(OpenStruct.new(slug: "arc"))
     assert_equal "explorer",    explorer_name(OpenStruct.new(slug: "zzz"))
   end
 

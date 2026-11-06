@@ -59,6 +59,31 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_equal 301, response.status
   end
 
+  # Robinhood Chain still uses Blockscout for source/ABI while Etherscan's
+  # new index has incomplete proxy coverage. Assert dispatch end-to-end.
+  test "show fetches an unindexed contract through Blockscout on a Blockscout chain" do
+    address = "0x0bd7d308f8e1639fab988df18a8011f41eacad73"
+    blockscout = stub_request(:get, /robinhoodchain\.blockscout\.com.*getsourcecode/).to_return(
+      status: 200,
+      body: { "status" => "1", "message" => "OK", "result" => [ {
+        "ContractName" => "WETH",
+        "CompilerVersion" => "v0.8.24+commit.e11b9ed9",
+        "SourceCode" => "contract WETH {}",
+        "ABI" => '[{"type":"function","name":"totalSupply","inputs":[],"outputs":[{"type":"uint256"}],"stateMutability":"view"}]',
+        "IsProxy" => false
+      } ] }.to_json,
+      headers: { "Content-Type" => "application/json" }
+    )
+
+    get contract_path(chain: "robinhood", address: address)
+
+    assert_response :success
+    assert_select "h1", "WETH"
+    assert_requested blockscout
+    assert_not_requested(:get, %r{api\.etherscan\.io})
+    assert_equal "WETH", Contract.find_by(chain: chains(:robinhood), address: address).name
+  end
+
   test "unknown slug with chain suffix returns 404" do
     get "/nonexistent-eth"
     assert_response :not_found

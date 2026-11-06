@@ -55,7 +55,7 @@ module GovernanceEvents
         begin
           topic0 = ChainReader::EventDecoder.event_topic0(event_abi)
           newly += fetch_event_type(event_abi, topic0, from_block, latest_block)
-        rescue EtherscanClient::Error, ChainReader::Base::RpcError => e
+        rescue ExplorerClient::Error, ChainReader::Base::RpcError => e
           failures << "#{event_abi['name']}: #{e.message}"
           Rails.logger.warn("[GovernanceEvents] #{event_abi['name']} failed: #{e.class}: #{e.message}")
         end
@@ -114,10 +114,11 @@ module GovernanceEvents
     end
 
     # On eth mainnet: try Etherscan first (pagination + timestamps), fall back
-    # to RPC on dynamic failure. On other chains: free-tier Etherscan can't
-    # serve logs, go straight to RPC (no pagination, page>1 not meaningful).
+    # to RPC on dynamic failure. Everywhere else the explorer can't serve logs
+    # (free-tier Etherscan, or Blockscout), go straight to RPC (no pagination,
+    # page>1 not meaningful).
     def fetch_logs(topic0:, from_block:, to_block:, page: 1)
-      unless EtherscanClient.logs_supported?(@contract.chain)
+      unless explorer.logs_supported?
         return [] if page > 1
 
         return ChainReader::Base.eth_get_logs(
@@ -129,7 +130,7 @@ module GovernanceEvents
         )
       end
 
-      etherscan.get_logs(
+      explorer.get_logs(
         address: @contract.address,
         topic0: topic0,
         from_block: from_block,
@@ -138,7 +139,7 @@ module GovernanceEvents
         offset: PAGE_SIZE,
         sort: "asc"
       )
-    rescue EtherscanClient::Error => e
+    rescue ExplorerClient::Error => e
       # RPC doesn't support pagination; only use on first page to avoid dupes.
       raise if page > 1
 
@@ -172,8 +173,8 @@ module GovernanceEvents
       record.persisted?
     end
 
-    def etherscan
-      @etherscan ||= EtherscanClient.new(@contract.chain)
+    def explorer
+      @explorer ||= @contract.chain.explorer_client
     end
 
     def build_result(latest_block:, newly_fetched:, error: nil)

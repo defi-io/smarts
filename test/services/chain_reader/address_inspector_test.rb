@@ -102,9 +102,24 @@ class ChainReader::AddressInspectorTest < ActiveSupport::TestCase
       r = ChainReader::AddressInspector.call(chain: @chain, address: ADDR)
       # code fetch failed → is_contract resolves via code_has_bytecode?(nil) → nil
       assert_nil r.is_contract
+      # "unknown" must not masquerade as a wallet: the not-verified page keys
+      # its 👤 "Wallet address" heading off eoa?, so `!is_contract` here would
+      # tell the user a real contract is an EOA whenever the node is
+      # unreachable.
+      assert_not r.eoa?, "unknown is_contract must not report as an EOA"
       # others still fine
       assert_equal 1, r.balance_wei
       assert_equal 1, r.tx_count
     end
+  end
+
+  test "eoa? is only true when the node actually said there is no code" do
+    known_eoa = ChainReader::AddressInspector::Result.new(is_contract: false)
+    contract  = ChainReader::AddressInspector::Result.new(is_contract: true)
+    unknown   = ChainReader::AddressInspector::Result.new(is_contract: nil)
+
+    assert known_eoa.eoa?
+    assert_not contract.eoa?
+    assert_not unknown.eoa?
   end
 end

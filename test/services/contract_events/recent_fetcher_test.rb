@@ -124,6 +124,31 @@ class ContractEvents::RecentFetcherTest < ActiveSupport::TestCase
     end
   end
 
+  # Robinhood Chain's public RPC (Arbitrum Orbit) phrases the cap differently
+  # from the nodes the original pattern list was written against.
+  test "shrinks RPC fallback window on an 'exceeds limit of N' node message" do
+    stub_etherscan_error
+    calls = []
+    rpc_logs = [ sample_transfer_log(block_number: @latest_block - 1, tx_hash: "0xrpc_recent") ]
+
+    rpc_call = ->(_chain, from_block:, **_) do
+      calls << from_block
+      raise ChainReader::Base::RpcError, "-32000: logs matched by query exceeds limit of 10000" if calls.length == 1
+
+      rpc_logs
+    end
+
+    stub_class_method(ChainReader::Base, :eth_get_logs, rpc_call) do
+      result = with_eth_block_number do
+        ContractEvents::RecentFetcher.call(contract: @contract, limit: 1)
+      end
+
+      assert result.success?, result.error
+      assert_equal 2, calls.length, "node cap must trigger one window shrink, not an error result"
+      assert_equal @latest_block - (ContractEvents::RecentFetcher::RECENT_BLOCK_WINDOW / 2), calls.second
+    end
+  end
+
   test "non-eth chain skips Etherscan logs and uses RPC directly" do
     base_contract = Contract.new(
       chain: chains(:base),

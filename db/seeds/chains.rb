@@ -43,6 +43,23 @@ CHAIN_SEEDS = [
     rpc_url: "https://polygon-bor-rpc.publicnode.com"
   },
   {
+    name: "Robinhood Chain", slug: "robinhood", chain_id: 4663, tier: "full",
+    # Etherscan V2 now lists chain 4663, but its new index still marks WETH's
+    # verified implementation as unverified. Keep Blockscout for source/ABI
+    # until Etherscan's proxy coverage is complete.
+    explorer_api_url: "https://robinhoodchain.blockscout.com/api",
+    rpc_url: "https://rpc.mainnet.chain.robinhood.com"
+  },
+  {
+    name: "Arc", slug: "arc", chain_id: 5042, tier: "full",
+    # ArcScan and Etherscan V2 added chain 5042 on 2026-09-16, but their source
+    # index is not ready for Smarts yet: none of our six curated contracts can
+    # be fetched end-to-end (USDC's proxy is verified, but its implementation
+    # is not). Keep source/ABI on Sourcify while exposing ArcScan to users.
+    explorer_api_url: "https://sourcify.dev/server",
+    rpc_url: "https://rpc.mainnet.arc.io"
+  },
+  {
     name: "Ethereum Sepolia", slug: "sepolia", chain_id: 11_155_111, tier: "docs_only", network_kind: "testnet",
     explorer_api_url: "https://api.etherscan.io/v2/api",
     rpc_url: nil
@@ -99,12 +116,14 @@ CHAIN_SEEDS = [
   },
   {
     name: "opBNB", slug: "opbnb", chain_id: 204, tier: "docs_only", network_kind: "mainnet",
-    explorer_api_url: "https://api.etherscan.io/v2/api",
+    # Etherscan V2 dropped opBNB (chain IDs 204/5611) on 2026-10-12; Sourcify serves both.
+    explorer_api_url: "https://sourcify.dev/server",
     rpc_url: nil
   },
   {
     name: "opBNB Testnet", slug: "opbnb-testnet", chain_id: 5_611, tier: "docs_only", network_kind: "testnet",
-    explorer_api_url: "https://api.etherscan.io/v2/api",
+    # Etherscan V2 dropped opBNB (chain IDs 204/5611) on 2026-10-12; Sourcify serves both.
+    explorer_api_url: "https://sourcify.dev/server",
     rpc_url: nil
   },
   {
@@ -201,6 +220,14 @@ CHAIN_SEEDS = [
     name: "MegaETH Testnet", slug: "megaeth-testnet", chain_id: 6_343, tier: "docs_only", network_kind: "testnet",
     explorer_api_url: "https://api.etherscan.io/v2/api",
     rpc_url: nil
+  },
+  {
+    name: "Arc Testnet", slug: "arc-testnet", chain_id: 5_042_002, tier: "docs_only", network_kind: "testnet",
+    # Unlike mainnet, the Arc testnet explorer is a public Blockscout with the
+    # Etherscan-compatible /api shim enabled (its `proxy` module is off, which
+    # we never use — events go through RPC).
+    explorer_api_url: "https://testnet.arcscan.app/api",
+    rpc_url: "https://rpc.testnet.arc.io"
   },
 
   # ── Tier 2 — docs_only: Etherscan source/ABI only, no RPC, no live data. ─
@@ -426,6 +453,16 @@ CHAIN_PRESENTATION = {
   "megaeth-testnet" => {
     docs_url: "https://docs.megaeth.com/testnet",
     faucet_url: "https://testnet.megaeth.com"
+  },
+  "arc" => {
+    summary: "Circle's Arc L1: native USDC gas, EURC and USYC, and the StableFX settlement escrow.",
+    docs_url: "https://docs.arc.io/arc/references/contract-addresses",
+    explorer_url: "https://arc.etherscan.io",
+    verify_url: "https://arc.etherscan.io/verifyContract"
+  },
+  "arc-testnet" => {
+    docs_url: "https://docs.arc.io/arc/references/contract-addresses",
+    faucet_url: "https://faucet.circle.com"
   },
   "linea" => {
     summary: "Docs-only Linea contracts from the ecosystem's native tokens and leading apps.",

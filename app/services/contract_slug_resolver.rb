@@ -4,7 +4,7 @@
 # db/seeds/chain_contracts.rb. This service intentionally does not keep a
 # parallel slug/address map.
 module ContractSlugResolver
-  CHAIN_SUFFIX = %w[eth base arbitrum optimism bnb polygon].freeze
+  CHAIN_SUFFIX = %w[eth base arbitrum optimism bnb polygon arc].freeze
 
   # Shared route constraint so routing rejects `/about`, `/api`, etc. Rails
   # anchors constraints internally and rejects \A / \z.

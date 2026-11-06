@@ -93,6 +93,42 @@ class ChainTest < ActiveSupport::TestCase
     assert_not docs_chain.full?
   end
 
+  test "explorer_client returns EtherscanClient for Etherscan-indexed chains" do
+    assert_instance_of EtherscanClient, chains(:ethereum).explorer_client
+    assert_instance_of EtherscanClient, chains(:polygon).explorer_client
+  end
+
+  test "explorer_client returns BlockscoutClient for Robinhood Chain" do
+    assert_instance_of BlockscoutClient, chains(:robinhood).explorer_client
+  end
+
+  test "explorer_client returns SourcifyClient for Arc" do
+    assert_instance_of SourcifyClient, chains(:arc).explorer_client
+  end
+
+  # Arc pays gas in native USDC rather than a volatile L1 coin, so the balance
+  # display must not fall back to the "ETH" default.
+  test "native_symbol is USDC on Arc" do
+    assert_equal "USDC", chains(:arc).native_symbol
+  end
+
+  # testnet.arcscan.app is a hosted Blockscout behind a vanity domain — the
+  # host never says "blockscout", so this would otherwise fall through to
+  # EtherscanClient and query a chain Etherscan does not index.
+  test "explorer_client returns BlockscoutClient for the Arc testnet vanity host" do
+    chain = Chain.new(slug: "arc-testnet", chain_id: 5_042_002, explorer_api_url: "https://testnet.arcscan.app/api")
+
+    assert_instance_of BlockscoutClient, chain.explorer_client
+  end
+
+  test "every seeded chain resolves to an explorer client" do
+    load Rails.root.join("db/seeds/chains.rb")
+    CHAIN_SEEDS.each do |attrs|
+      chain = Chain.new(attrs.slice(:name, :slug, :chain_id, :explorer_api_url, :rpc_url))
+      assert_kind_of ExplorerClient, chain.explorer_client, "no explorer client for #{attrs[:slug]}"
+    end
+  end
+
   test "DISPLAY_ORDER covers every chain in db/seeds/chains.rb" do
     load Rails.root.join("db/seeds/chains.rb")
     seeded_slugs = CHAIN_SEEDS.map { |c| c[:slug] }

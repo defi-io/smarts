@@ -10,7 +10,7 @@ module Seo
 
         list = labels.present? ? labels.to_sentence : "blue-chip contracts"
 
-        "Live docs for every smart contract. Start with #{list} across Ethereum, Base, Arbitrum, Optimism, BNB Smart Chain, and Polygon, or connect your AI agent to query verified on-chain state."
+        "Live docs for every smart contract. Start with #{list} across Ethereum, Base, Arbitrum, Optimism, BNB Smart Chain, Polygon, Robinhood Chain, and Arc, or connect your AI agent to query verified on-chain state."
       end
 
       def contract(contract_name:, chain_name:, classification: nil, address: nil)
