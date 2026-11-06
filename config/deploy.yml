@@ -4,7 +4,13 @@ deploy_timeout: 320
 
 servers:
   web:
-    - deploy.smarts
+    hosts:
+      - deploy.tokyo
+    # The solid-queue worker leaks memory; cap it so it can't starve the shared box.
+    options:
+      memory: 2g
+      # defiio is the priority app on this box: let the kernel OOM-kill this first.
+      oom-score-adj: 500
 
 proxy:
   ssl: true
@@ -60,7 +66,7 @@ ssh:
 accessories:
   db:
     image: postgres:17
-    host: deploy.smarts
+    host: deploy.tokyo
     port: "127.0.0.1:5434:5432"
     env:
       clear:
