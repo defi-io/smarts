@@ -55,9 +55,18 @@ Rails.application.routes.draw do
     ]
   )
 
+  # mcp >= 0.23 rejects any Host outside 127.0.0.1/::1/localhost (DNS-rebinding
+  # protection), so every host that serves /mcp must be listed here or the
+  # endpoint answers 403 "Invalid Host header". Keep in sync with the proxy
+  # hosts in config/deploy.yml and the dev hosts in development.rb.
+  mcp_allowed_hosts = %w[smarts.md mcp.smarts.md]
+  mcp_allowed_hosts += %w[mcp.localhost d.smarts.md] if Rails.env.development?
+  mcp_allowed_hosts += %w[www.example.com] if Rails.env.test? # integration-test default host
+
   mcp_transport = MCP::Server::Transports::StreamableHTTPTransport.new(
     mcp_server,
-    stateless: true
+    stateless: true,
+    allowed_hosts: mcp_allowed_hosts
   )
 
   # Wrap the transport so each request authenticates an optional
