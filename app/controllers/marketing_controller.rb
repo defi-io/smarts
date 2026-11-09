@@ -164,8 +164,8 @@ class MarketingController < ApplicationController
       schema_version: "v1",
       name_for_human: "Smarts — Smart Contract Docs",
       name_for_model: "smarts",
-      description_for_human: "Live docs for every verified smart contract. Query on-chain state, token info, admin risk, and governance events across Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, and Arc.",
-      description_for_model: "Use the Smarts API to read live on-chain state for verified smart contracts on EVM chains (Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, Arc). You can look up ERC-20 token metadata and prices, Uniswap V3 pool state, admin risk profiles, governance timelines, Polymarket markets, contract source code, and call any view function. Use curated slugs (e.g. 'usdc-eth', 'uni-eth') or chain+address pairs.",
+      description_for_human: "Live docs for every verified smart contract. Query on-chain state, token info, and admin risk across Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, and Arc.",
+      description_for_model: "Use the Smarts API to read live on-chain state for verified smart contracts on EVM chains (Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, Arc). You can look up ERC-20 token metadata and prices, Uniswap V3 pool state, admin risk profiles, Polymarket markets, contract source code, and call any view function. Use curated slugs (e.g. 'usdc-eth', 'uni-eth') or chain+address pairs.",
       auth: { type: "none" },
       api: {
         type: "openapi",
@@ -261,7 +261,7 @@ class MarketingController < ApplicationController
       info: {
         title: "Smarts API",
         version: "1.0.0",
-        description: "Live docs for every verified smart contract. Query on-chain state, ERC-20 tokens, Uniswap V3 pools, admin risk, governance events, Polymarket markets, and more across Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, and Arc."
+        description: "Live docs for every verified smart contract. Query on-chain state, ERC-20 tokens, Uniswap V3 pools, admin risk, Polymarket markets, and more across Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, and Arc."
       },
       servers: [ { url: "https://smarts.md" } ],
       paths: paths

@@ -578,4 +578,18 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal "smarts", JSON.parse(response.body)["name"]
   end
+
+  test "public descriptions no longer advertise the removed governance timeline" do
+    get "/.well-known/ai-plugin.json"
+    assert_response :success
+    refute_match(/governance/i, response.body)
+
+    get "/api/openapi.json"
+    assert_response :success
+    refute_match(/governance/i, JSON.parse(response.body).dig("info", "description"))
+
+    get "/chains/eth.md"
+    assert_response :success
+    assert_match "recent activity, and admin controls", response.body
+  end
 end
