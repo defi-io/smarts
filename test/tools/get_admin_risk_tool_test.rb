@@ -24,7 +24,6 @@ class GetAdminRiskToolTest < ActiveSupport::TestCase
         { key: "paused", label: "Paused", type: "bool", value: false, source: "view" },
         { key: "master_minter", label: "Master minter", type: "address", value: "0x" + "1" * 40, source: "view" }
       ],
-      recent_governance: { count: 3, latest_event: "MinterConfigured", latest_category: "config", latest_block: 25_000_123 },
       evidence: [ { type: "function", name: "pause", flag: "pausable" } ],
       warnings: [ "Upgradeability inferred from ABI/events; proxy storage resolution may be incomplete." ],
       block_number: 25_000_123,
@@ -41,7 +40,7 @@ class GetAdminRiskToolTest < ActiveSupport::TestCase
       assert_equal profile.summary, result[:summary]
       assert_equal profile.risk_flags, result[:risk_flags]
       assert_equal profile.controls, result[:controls]
-      assert_equal profile.recent_governance, result[:recent_governance]
+      refute result.key?(:recent_governance)
       assert_equal profile.evidence, result[:evidence]
       assert_equal profile.warnings, result[:warnings]
       assert_equal profile.block_number, result[:block_number]
@@ -63,7 +62,6 @@ class GetAdminRiskToolTest < ActiveSupport::TestCase
       summary: "No admin risk controls detected from the verified ABI.",
       risk_flags: [],
       controls: [],
-      recent_governance: { count: 0, latest_event: nil, latest_category: nil, latest_block: nil },
       evidence: [],
       warnings: [],
       block_number: nil,
@@ -86,7 +84,6 @@ class GetAdminRiskToolTest < ActiveSupport::TestCase
       summary: "Could not build admin risk profile.",
       risk_flags: [],
       controls: [],
-      recent_governance: { count: 0, latest_event: nil, latest_category: nil, latest_block: nil },
       evidence: [],
       warnings: [],
       block_number: nil,

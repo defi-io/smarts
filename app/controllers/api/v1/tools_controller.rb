@@ -20,7 +20,6 @@ module Api
         "get_contract_source"      => GetContractSourceTool,
         "get_admin_risk"           => GetAdminRiskTool,
         "get_erc20_info"           => GetErc20InfoTool,
-        "get_governance_timeline"  => GetGovernanceTimelineTool,
         "get_polymarket_market"    => GetPolymarketMarketTool,
         "get_polymarket_position"  => GetPolymarketPositionTool,
         "get_polymarket_resolution" => GetPolymarketResolutionTool,

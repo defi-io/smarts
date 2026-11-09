@@ -134,7 +134,7 @@ external_apis:
 **不再写 per-chain data migration**（`db/migrate/*_add_<chain>_chain.rb` 已废弃，参见 `add_bnb_chain.rb` 头部注释）。
 Production 部署由 `bin/docker-entrypoint` 在 server 启动时自动跑 `Chains::Seeder.call`。
 
-**Tier 1 — `full`**：完整能力，live state + activity + governance + admin/risk + protocol adapters。
+**Tier 1 — `full`**：完整能力，live state + activity + admin/risk + protocol adapters。
 - Ethereum (1) / Base (8453) / Arbitrum One (42161) / Optimism (10) / Polygon PoS (137) / BNB Smart Chain (56) / Robinhood Chain (4663) / Arc (5042)
 - 配置必备：`rpc_url`，所有链上读取走 `ChainReader::*`（Multicall3 + view caller + event decoder）
 - 适用于：Top DeFi 协议、需要 AI agent 查实时状态的合约
@@ -170,7 +170,7 @@ Blockscout 的三处差异（未验证无 sentinel、代理字段是 `IsProxy`/`
 **Robinhood Chain 的公共端点限流（2026-09 实测）**：Blockscout 和公共 RPC 都是"长惩罚期"限流——
 一次几十个请求的爆发会让**整个出口 IP** 被锁 30 分钟以上，不是滑动窗口。RPC 的 `eth_call` /
 Multicall3 很便宜（Live State 稳定可用），但 `eth_getLogs` 有独立的重方法预算，几次就打光，
-Activity / Governance 会返回 429。Robinhood 官方文档也明说公共 RPC "not recommended for
+Activity 会返回 429。Robinhood 官方文档也明说公共 RPC "not recommended for
 production"。所以：这条链正式对外推之前，先拿 Blockscout API key（dev.blockscout.com），并通过
 `ROBINHOOD_RPC_URL` 配置 Alchemy endpoint；不要把 provider key 写进 seed 或数据库。未配置时继续
 使用 seed 里的公共 RPC，仅适合本地开发和低流量读取。
@@ -180,8 +180,8 @@ production"。所以：这条链正式对外推之前，先拿 Blockscout API ke
 - 数据源：Etherscan V2 `getsourcecode` / `getabi` —— Etherscan **官方对所有支持链 + Free tier 都开放这两个端点**（其他端点如 `getLogs` 只在 paid + selected chains）
 - 配置：`rpc_url: nil`
 - 启用的 MCP tools：`get_contract_info`、`get_contract_source`
-- 禁用的 MCP tools（友好返回 docs-only error，不会 timeout）：`read_contract_state`、`get_erc20_info`、`get_uniswap_v3_pool`、`get_recent_events`、`get_governance_timeline`、`get_admin_risk`、`inspect_address`
-- UI：show 页面只渲染 Docs + Source tabs，隐藏 Live State / Activity / Governance tabs，顶部显示 docs-only notice
+- 禁用的 MCP tools（友好返回 docs-only error，不会 timeout）：`read_contract_state`、`get_erc20_info`、`get_uniswap_v3_pool`、`get_recent_events`、`get_admin_risk`、`inspect_address`
+- UI：show 页面只渲染 Docs + Source tabs，隐藏 Live State / Activity tabs，顶部显示 docs-only notice
 - 价值：用零额外成本覆盖长尾 EVM 链，引流长尾开发者，反向推广主流链
 
 加新链流程：编辑 `db/seeds/chains.rb` → `bin/rails db:seed`（或部署即自动跑）。

@@ -48,17 +48,6 @@ class AdminRisk::ProfilerTest < ActiveSupport::TestCase
       name: "FiatTokenV2_2",
       abi: usdc_like_abi
     )
-    GovernanceEvent.create!(
-      contract: contract,
-      block_number: 123,
-      tx_hash: "0x" + "1" * 64,
-      log_index: 0,
-      event_name: "BlacklisterChanged",
-      category: "role_change",
-      args: {},
-      summary: "Blacklister updated"
-    )
-
     results = [
       ChainReader::Multicall3Client::Result.new(success: true, values: [ false ]),
       ChainReader::Multicall3Client::Result.new(success: true, values: [ "0x1111111111111111111111111111111111111111" ]),
@@ -78,8 +67,7 @@ class AdminRisk::ProfilerTest < ActiveSupport::TestCase
       assert_includes profile.risk_flags, "blacklistable"
       assert_equal 24_000_000, profile.block_number
       assert_equal %w[paused owner master_minter pauser blacklister rescuer], profile.controls.map { |c| c[:key] }
-      assert_equal 1, profile.recent_governance[:count]
-      assert_equal "BlacklisterChanged", profile.recent_governance[:latest_event]
+      refute_respond_to profile, :recent_governance
       assert_match(/mintable/, profile.summary)
     end
   end

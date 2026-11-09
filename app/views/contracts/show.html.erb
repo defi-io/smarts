@@ -87,7 +87,6 @@
        data-controller="contract-tabs"
        <% if @chain.full? %>
        data-contract-tabs-activity-url-value="<%= contract_island_path("activity") %>"
-       data-contract-tabs-governance-url-value="<%= contract_island_path("governance") %>"
        <% end %>
        data-contract-tabs-source-url-value="<%= contract_island_path("source") %>">
     <input id="contract_tab_docs" data-turbo-permanent type="radio" name="contract_view" role="tab" class="tab" aria-label="<%= t('contracts.show.tab_docs') %>" checked />
@@ -102,16 +101,6 @@
           <div class="flex flex-col gap-3">
             <div class="skeleton h-8 w-48"></div>
             <div class="skeleton h-24 w-full rounded-lg"></div>
-            <div class="skeleton h-24 w-full rounded-lg"></div>
-          </div>
-        </turbo-frame>
-      </div>
-
-      <input id="contract_tab_governance" data-turbo-permanent type="radio" name="contract_view" role="tab" class="tab" aria-label="<%= t('contracts.show.tab_governance') %>" data-contract-tabs-target="governance" data-action="change->contract-tabs#loadTab" />
-      <div role="tabpanel" class="tab-content bg-base-100 border-base-300 p-6">
-        <turbo-frame id="contract_governance">
-          <div class="flex flex-col gap-3">
-            <div class="skeleton h-8 w-48"></div>
             <div class="skeleton h-24 w-full rounded-lg"></div>
           </div>
         </turbo-frame>

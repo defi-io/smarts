@@ -41,7 +41,6 @@ Rails.application.routes.draw do
       GetContractSourceTool,
       GetAdminRiskTool,
       GetErc20InfoTool,
-      GetGovernanceTimelineTool,
       GetPolymarketMarketTool,
       GetPolymarketPositionTool,
       GetPolymarketResolutionTool,
@@ -134,7 +133,7 @@ Rails.application.routes.draw do
   # Contract sub-resource endpoints (Turbo Frame islands).
   # These MUST sit before the slug / hex catch-all routes so Rails tries them
   # first; otherwise `:slug` would swallow "usdc-eth/live" as a single param.
-  %w[live activity governance source].each do |island|
+  %w[live activity source].each do |island|
     get ":locale/:slug/#{island}", to: "contracts##{island}",
       constraints: { locale: Regexp.union(Article::LOCALE_ROUTE_MAP.keys), slug: ContractSlugResolver::ROUTE_PATTERN }
     get ":locale/:chain/:address/#{island}", to: "contracts##{island}",

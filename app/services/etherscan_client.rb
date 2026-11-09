@@ -2,8 +2,8 @@ class EtherscanClient < ExplorerClient
   EXPLORER_NAME = "Etherscan".freeze
 
   # Etherscan free tier caps at 5 req/sec; some accounts see 3/sec. Be
-  # conservative — sleep between calls so the TimelineFetcher's per-event-type
-  # fan-out doesn't trip the upstream limiter. Set to 0 in tests so stubbed
+  # conservative — sleep between calls so log-scan fan-out
+  # doesn't trip the upstream limiter. Set to 0 in tests so stubbed
   # connections don't pay the wall-clock cost.
   self.throttle_interval = 0.4
 
