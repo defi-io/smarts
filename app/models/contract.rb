@@ -1,6 +1,5 @@
 class Contract < ApplicationRecord
   belongs_to :chain
-  has_many :governance_events, dependent: :destroy
 
   validates :address, presence: true
   validates :address, uniqueness: { scope: :chain_id }

@@ -26,7 +26,7 @@ class ContractsController < ApplicationController
 
     respond_to do |format|
       format.html do
-        # Shell: activity / governance / full live state load via Turbo Frame
+        # Shell: activity / full live state load via Turbo Frame
         # islands. ViewCaller is still called here because the header needs
         # ERC-20 name/symbol via contract_display_name's live_value fallback —
         # without it brand names regress to the Solidity class ("FiatTokenV2_2").
@@ -44,7 +44,6 @@ class ContractsController < ApplicationController
           @live_snapshot = load_live_values(@contract)
           @live_values = @live_snapshot
           @activity = load_recent_events(@contract)
-          @governance = load_governance_timeline(@contract)
         else
           @live_snapshot = empty_live_snapshot
           @live_values = @live_snapshot
@@ -90,15 +89,6 @@ class ContractsController < ApplicationController
     @classification = classify(@contract)
     @live_values = load_live_values(@contract)
     expires_in 30.seconds, public: true, stale_while_revalidate: 60.seconds
-    render layout: false
-  end
-
-  def governance
-    load_island_contract
-    return render_docs_only_island if @chain.docs_only?
-
-    @governance = load_governance_timeline(@contract)
-    expires_in 1.hour, public: true
     render layout: false
   end
 
@@ -200,43 +190,6 @@ class ContractsController < ApplicationController
     nil
   end
 
-  def load_governance_timeline(contract)
-    # Synchronously serve whatever's already persisted; Etherscan calls happen
-    # in the background via GovernanceTimelineRefreshJob (broadcasts a Turbo
-    # morph refresh when done). Keeps the show action sub-second even on cold
-    # contracts where a full backfill would otherwise take 5-10s.
-    cached_events = GovernanceEvents::TimelineFetcher.recent_events(contract)
-    refreshing = false
-
-    unless GovernanceTimelineRefreshJob.fresh?(contract)
-      GovernanceTimelineRefreshJob.perform_later(contract.id)
-      refreshing = true
-    end
-
-    GovernanceEvents::TimelineFetcher::Result.new(
-      contract: contract.address,
-      chain: contract.chain.slug,
-      total_events: contract.governance_events.count,
-      newly_fetched: 0,
-      latest_block: contract.governance_last_scanned_block,
-      events: cached_events,
-      error: nil,
-      refreshing: refreshing
-    )
-  rescue => e
-    Rails.logger.warn("[ContractsController] governance fetch failed: #{e.class}: #{e.message}")
-    GovernanceEvents::TimelineFetcher::Result.new(
-      contract: contract.address,
-      chain: contract.chain.slug,
-      total_events: 0,
-      newly_fetched: 0,
-      latest_block: nil,
-      events: GovernanceEvents::TimelineFetcher.recent_events(contract),
-      error: e.message,
-      refreshing: false
-    )
-  end
-
   def load_admin_risk_profile(contract)
     AdminRisk::Profiler.call(contract: contract)
   rescue => e
@@ -247,7 +200,6 @@ class ContractsController < ApplicationController
       summary: "Could not build admin risk profile.",
       risk_flags: [],
       controls: [],
-      recent_governance: { count: contract.governance_events.count },
       evidence: [],
       warnings: [],
       block_number: nil,
@@ -302,14 +254,13 @@ class ContractsController < ApplicationController
   end
 
   # Renders a friendly notice in a Turbo Frame for docs_only chains. Used by
-  # live/activity/governance island actions so they fail fast instead of
+  # live/activity island actions so they fail fast instead of
   # spinning up RPC calls that aren't configured for the chain.
   def render_docs_only_island
     frame_id =
       case action_name
       when "live"       then "contract_live"
       when "activity"   then "contract_activity"
-      when "governance" then "contract_governance"
       end
     render plain: <<~HTML, content_type: "text/html"
       <turbo-frame id="#{frame_id}">

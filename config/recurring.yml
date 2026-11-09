@@ -10,6 +10,3 @@
 #     schedule: at 5am every day
 
 production:
-  warmup_governance_cache:
-    class: WarmupGovernanceCacheJob
-    schedule: every 30 minutes

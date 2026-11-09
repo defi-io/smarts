@@ -2,17 +2,16 @@ import { Controller } from "@hotwired/stimulus"
 
 // Manages DaisyUI tab ↔ Turbo Frame lazy loading.
 //
-// The shell page renders Docs inline and three empty <turbo-frame> placeholders
-// for Activity, Governance, and Source. This controller:
+// The shell page renders Docs inline and two empty <turbo-frame> placeholders
+// for Activity and Source. This controller:
 //   1. On tab click, sets `frame.src` to the island URL (fetched once).
-//   2. On connect, auto-selects a tab when the URL carries legacy query params
-//      (`?event_name=…` → Activity, `?gov_category=…` → Governance).
+//   2. On connect, auto-selects the Activity tab when the URL carries a legacy
+//      `?event_name=…` query param.
 export default class extends Controller {
-  static targets = ["activity", "governance", "source"]
+  static targets = ["activity", "source"]
   static values  = {
-    activityUrl:   String,
-    governanceUrl: String,
-    sourceUrl:     String
+    activityUrl: String,
+    sourceUrl:   String
   }
 
   connect() {
@@ -23,20 +22,15 @@ export default class extends Controller {
       this.show("activity")
       const url = this.appendParams(this.activityUrlValue, params, ["event_name"])
       this.loadFrame("contract_activity", url)
-    } else if (params.has("gov_category")) {
-      this.show("governance")
-      const url = this.appendParams(this.governanceUrlValue, params, ["gov_category"])
-      this.loadFrame("contract_governance", url)
     }
   }
 
   loadTab(event) {
     const target = event.target
-    // hasXTarget guards required because docs_only chains omit activity and
-    // governance tabs entirely — accessing this.activityTarget when the target
+    // hasXTarget guards required because docs_only chains omit the activity
+    // tab entirely — accessing this.activityTarget when the target
     // is absent throws and aborts the handler, blocking source from loading too.
     if (this.hasActivityTarget   && target === this.activityTarget)   this.loadFrame("contract_activity",   this.activityUrlValue)
-    if (this.hasGovernanceTarget && target === this.governanceTarget) this.loadFrame("contract_governance", this.governanceUrlValue)
     if (this.hasSourceTarget     && target === this.sourceTarget)     this.loadFrame("contract_source",     this.sourceUrlValue)
   }
 
@@ -52,7 +46,6 @@ export default class extends Controller {
 
   show(target) {
     if (target === "activity"   && this.hasActivityTarget)   this.activityTarget.checked = true
-    if (target === "governance" && this.hasGovernanceTarget) this.governanceTarget.checked = true
   }
 
   appendParams(base, params, keys) {

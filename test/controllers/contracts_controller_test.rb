@@ -1058,86 +1058,23 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_match "Could not load recent activity", response.body
   end
 
-  # Governance tests now hit the /governance island endpoint directly.
-  test "governance island renders timeline events and category filter chips" do
+  test "contract pages no longer expose a governance tab or timeline" do
     contract = contracts(:uni_token)
-    seed_governance_event(contract, name: "OwnershipTransferred", category: "role_change",
-                          summary: "Owner: 0xaaaa…aaaa → 0xbbbb…bbbb")
-    seed_governance_event(contract, name: "Blacklisted", category: "risk_action",
-                          summary: "0x1234…5678 added to blacklist", tx_hash: "0x" + "1" * 64)
-    mark_governance_fresh(contract)
-
-    get "/eth/#{contract.address}/governance"
-
-    assert_response :success
-    assert_match "Governance Timeline", response.body
-    assert_match "OwnershipTransferred", response.body
-    assert_match "Role change", response.body
-    assert_match "Risk action", response.body
-    assert_match "Owner: 0xaaaa…aaaa → 0xbbbb…bbbb", response.body
-    assert_match 'href="/eth/0x1111111111111111111111111111111111111111/governance?gov_category=role_change"', response.body
-  end
-
-  test "governance island renders only the newest EVENTS_LIMIT events" do
-    contract = contracts(:uni_token)
-    seed_governance_event(contract, name: "Pause", category: "lifecycle", summary: "old pause", block: 1)
-    seed_governance_event(contract, name: "Unpause", category: "lifecycle", summary: "new unpause", block: 2)
-    mark_governance_fresh(contract)
-
-    stub_const(GovernanceEvents::TimelineFetcher, :EVENTS_LIMIT, 1) do
-      get "/eth/#{contract.address}/governance"
-    end
-
-    assert_response :success
-    assert_match "new unpause", response.body
-    refute_match "old pause", response.body
-  end
-
-  test "governance island filters by gov_category" do
-    contract = contracts(:uni_token)
-    seed_governance_event(contract, name: "Blacklisted", category: "risk_action", summary: "x added")
-    mark_governance_fresh(contract)
-
-    get "/eth/#{contract.address}/governance", params: { gov_category: "risk_action" }
-
-    assert_response :success
-    assert_match "Blacklisted", response.body
-  end
-
-  test "contract .md includes Governance timeline grouped by category" do
-    contract = contracts(:uni_token)
-    seed_governance_event(contract, name: "OwnershipTransferred", category: "role_change",
-                          summary: "Owner: 0xaaaa…aaaa → 0xbbbb…bbbb")
-    seed_governance_event(contract, name: "Blacklisted", category: "risk_action",
-                          summary: "0x1234…5678 added to blacklist", tx_hash: "0x" + "1" * 64)
-    mark_governance_fresh(contract)
 
     stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) do
+      get contract_path(chain: "eth", address: contract.address)
+      assert_response :success
+      refute_match %r{id="contract_tab_governance"}, response.body
+      assert_match %r{id="contract_tab_activity"}, response.body
+
       stub_class_method(ContractEvents::RecentFetcher, :call, ->(**_) { activity_result(contract) }) do
         get "/eth/#{contract.address}.md"
       end
     end
 
     assert_response :success
-    assert_match "## Governance timeline", response.body
-    assert_match "### Role change (1)", response.body
-    assert_match "### Risk action (1)", response.body
-    assert_match "**OwnershipTransferred**", response.body
-    assert_match "Owner: 0xaaaa…aaaa → 0xbbbb…bbbb", response.body
-    assert_match "Ask your AI agent", response.body
-  end
-
-  # Governance refresh now happens in the /governance island, not the shell.
-  test "governance island enqueues refresh job and shows refreshing hint when cache is cold" do
-    contract = contracts(:uni_token)
-
-    assert_enqueued_with(job: GovernanceTimelineRefreshJob, args: [ contract.id ]) do
-      get "/eth/#{contract.address}/governance"
-    end
-
-    assert_response :success
-    assert_match "Loading the governance timeline in the background", response.body
-    refute_match "No governance events recorded in the recent window", response.body
+    refute_match "## Governance timeline", response.body
+    refute_match "Governance events loaded", response.body
   end
 
   # ---------- Admin & Risk section ----------
@@ -1155,7 +1092,6 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
         { key: "implementation", label: "Implementation", type: "address",
           value: "0x2222222222222222222222222222222222222222", source: "proxy" }
       ],
-      recent_governance: { count: 0 },
       evidence: [],
       warnings: [ "Upgradeability inferred from ABI/events; proxy storage resolution may be incomplete." ],
       block_number: 24_500_000,
@@ -1185,7 +1121,7 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     profile = AdminRisk::Profiler::Result.new(
       contract: contract.address, chain: "eth",
       summary: "No admin risk controls detected from the verified ABI.",
-      risk_flags: [], controls: [], recent_governance: { count: 0 },
+      risk_flags: [], controls: [],
       evidence: [], warnings: [], block_number: nil, fetched_at: nil, error: nil
     )
 
@@ -1212,7 +1148,7 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     profile = AdminRisk::Profiler::Result.new(
       contract: contract.address, chain: "polygon",
       summary: "No admin risk controls detected from the verified ABI.",
-      risk_flags: [], controls: [], recent_governance: { count: 0 },
+      risk_flags: [], controls: [],
       evidence: [], warnings: [], block_number: nil, fetched_at: nil, error: nil
     )
 
@@ -1384,7 +1320,6 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
           value: "0xAAAA000000000000000000000000000000000000", source: "view" },
         { key: "paused", label: "Paused", type: "bool", value: false, source: "view" }
       ],
-      recent_governance: { count: 2, latest_event: "OwnershipTransferred", latest_block: 24_999_900 },
       evidence: [], warnings: [], block_number: 25_000_000, fetched_at: Time.current, error: nil
     )
 
@@ -1402,8 +1337,6 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_match "**Detected controls:** Pausable, Ownable", response.body
     assert_match "Owner: `0xaaaa000000000000000000000000000000000000`", response.body
     assert_match "Paused: `false`", response.body
-    assert_match "**Governance events loaded:** 2", response.body
-    assert_match "latest: `OwnershipTransferred`", response.body
   end
 
   test "contract page .md surfaces 'Could not build admin risk profile' on Profiler error" do
@@ -1421,68 +1354,7 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_match "Could not build admin risk profile: md profiler boom", response.body
   end
 
-  test "governance island does NOT enqueue refresh job when contract is already fresh" do
-    contract = contracts(:uni_token)
-    seed_governance_event(contract, name: "Pause", category: "lifecycle", summary: "Contract paused")
-
-    stub_class_method(GovernanceTimelineRefreshJob, :fresh?, ->(_c) { true }) do
-      assert_no_enqueued_jobs only: GovernanceTimelineRefreshJob do
-        get "/eth/#{contract.address}/governance"
-      end
-    end
-
-    assert_response :success
-    assert_no_match "Fetching the latest governance events in the background", response.body
-    assert_match "Pause", response.body
-  end
-
   private
-
-  def seed_governance_event(contract, name:, category:, summary:, tx_hash: nil, block: 18_234_567)
-    contract.governance_events.create!(
-      block_number: block,
-      tx_hash: tx_hash || "0x" + SecureRandom.hex(32),
-      log_index: 0,
-      event_name: name,
-      category: category,
-      summary: summary,
-      args: {},
-      block_timestamp: Time.utc(2024, 8, 12)
-    )
-  end
-
-  def mark_governance_fresh(contract)
-    Rails.cache.write(
-      GovernanceTimelineRefreshJob.freshness_key(contract),
-      Time.current,
-      expires_in: 30.minutes
-    )
-  end
-
-  def governance_result(contract, events: [], error: nil, latest_block: 25_000_000, newly_fetched: 0)
-    GovernanceEvents::TimelineFetcher::Result.new(
-      contract: contract.address,
-      chain: contract.chain.slug,
-      total_events: events.length,
-      newly_fetched: newly_fetched,
-      latest_block: latest_block,
-      events: events,
-      error: error
-    )
-  end
-
-  def governance_record(name:, category:, summary:, tx_hash: "0x" + "a" * 64, block: 18_234_567)
-    GovernanceEvent.new(
-      block_number: block,
-      tx_hash: tx_hash,
-      log_index: 0,
-      event_name: name,
-      category: category,
-      summary: summary,
-      args: {},
-      block_timestamp: Time.utc(2024, 8, 12)
-    )
-  end
 
   def activity_result(contract, events: [], event_filter: nil, error: nil)
     ContractEvents::RecentFetcher::Result.new(
@@ -1608,14 +1480,11 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/max-age=30/, cc)
   end
 
-  test "governance island sets Cache-Control public max-age=3600" do
+  test "removed governance island returns 404" do
     contract = contracts(:uni_token)
     get "/eth/#{contract.address}/governance"
 
-    assert_response :success
-    cc = response.headers["Cache-Control"]
-    assert_match(/public/, cc)
-    assert_match(/max-age=3600/, cc)
+    assert_response :not_found
   end
 
   test "source island sets Cache-Control public max-age=86400" do

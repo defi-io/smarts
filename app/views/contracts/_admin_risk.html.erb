@@ -78,20 +78,6 @@
       </div>
     <% end %>
 
-    <% if @admin_risk.recent_governance[:count].to_i.positive? %>
-      <div class="mt-5 text-sm">
-        <h3 class="font-semibold mb-1"><%= t('contracts.admin_risk.recent_governance') %></h3>
-        <p class="opacity-70">
-          <%= pluralize(@admin_risk.recent_governance[:count], "privileged event") %> loaded.
-          <% if @admin_risk.recent_governance[:latest_event] %>
-            <%= t('contracts.admin_risk.latest') %> <span class="font-mono"><%= @admin_risk.recent_governance[:latest_event] %></span>
-            <% if @admin_risk.recent_governance[:latest_block] %>
-              at block #<%= number_with_delimiter(@admin_risk.recent_governance[:latest_block]) %>.
-            <% end %>
-          <% end %>
-        </p>
-      </div>
-    <% end %>
 
     <% if @admin_risk.warnings.any? %>
       <ul class="mt-4 text-xs opacity-60 list-disc list-inside">

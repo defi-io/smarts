@@ -58,9 +58,8 @@ class MarketingController < ApplicationController
   MCP_TOOLS = [
     { name: "get_contract_info",    blurb: "Metadata about a verified contract: name, classification, adapter, function counts." },
     { name: "get_contract_source",  blurb: "Fetch the verified Solidity source: file index, single-file content, or substring grep across files." },
-    { name: "get_admin_risk",       blurb: "Current admin / risk profile for a verified contract: detected controls, current values, governance summary, and warnings." },
+    { name: "get_admin_risk",       blurb: "Current admin / risk profile for a verified contract: detected controls, current values, and warnings." },
     { name: "get_erc20_info",       blurb: "Live token state: formatted supply, price, market cap, issuer, admin controls (paused/owner/minter/…)." },
-    { name: "get_governance_timeline", blurb: "Privileged-event history for a contract, including Polymarket exchange/CTF/UMA slugs: role changes, proxy upgrades, pauses, blacklisting, minter config — decoded, categorized, summarized." },
     { name: "get_polymarket_market", blurb: "Polymarket market state by slug or condition ID: outcomes, prices when present, resolution payouts, and CTF position IDs." },
     { name: "get_polymarket_position", blurb: "Wallet balances for explicit Polymarket markets by condition ID or slug, including redeemable resolved outcomes." },
     { name: "get_polymarket_resolution", blurb: "Resolution audit for a Polymarket market: CTF payout vector from chain, Gamma closed/open status, outcome IDs, and consistency flags." },
@@ -82,15 +81,14 @@ class MarketingController < ApplicationController
     { q: "Show me the current admin risk profile for USDC.",    tool: "get_admin_risk" },
     { q: "Show me where USDC's blacklisting logic lives in source.", tool: "get_contract_source" },
     { q: "Show me the last 10 swaps on the USDC/WETH 0.05% pool.", tool: "get_recent_events" },
-    { q: "How has admin power on USDC evolved? Show me every role change and pause.", tool: "get_governance_timeline" },
-    { q: "Who can pause or upgrade Polymarket's CTF Exchange V2?", tool: "get_governance_timeline" },
+    { q: "Who can pause or upgrade Polymarket's CTF Exchange V2?", tool: "get_admin_risk" },
     { q: "What does Polymarket think about this market by slug?", tool: "get_polymarket_market" },
     { q: "Audit how this Polymarket market resolved on-chain.", tool: "get_polymarket_resolution" },
     { q: "Call balanceOf(0xabc…) on USDC.",                     tool: "read_contract_state" }
   ].freeze
 
   MCP_SHORTCUTS = [
-    { slug: "usdc-eth", blurb: "Ethereum USDC — stablecoin admin controls and governance timeline." },
+    { slug: "usdc-eth", blurb: "Ethereum USDC — stablecoin admin controls and blacklist surface." },
     { slug: "usdt-arbitrum", blurb: "Arbitrum USDT — multi-chain stablecoin lookup." },
     { slug: "univ3-usdc-weth-eth", blurb: "Deep Uniswap V3 USDC/WETH pool on Ethereum." },
     { slug: "aavev3-pool-base", blurb: "Aave V3 Pool proxy on Base." },

@@ -12,7 +12,7 @@ module AdminRisk
     CACHE_VERSION = "v1"
 
     Result = Struct.new(:contract, :chain, :summary, :risk_flags, :controls,
-                        :recent_governance, :evidence, :warnings,
+                        :evidence, :warnings,
                         :block_number, :fetched_at, :error,
                         keyword_init: true) do
       def success?
@@ -86,7 +86,6 @@ module AdminRisk
     def build_profile
       flags, evidence = detect_capabilities
       controls, block_number = read_controls
-      recent_governance = build_recent_governance
 
       Result.new(
         contract: @contract.address,
@@ -94,7 +93,6 @@ module AdminRisk
         summary: summarize(flags),
         risk_flags: flags,
         controls: controls,
-        recent_governance: recent_governance,
         evidence: evidence,
         warnings: warnings_for(flags, controls),
         block_number: block_number,
@@ -109,7 +107,6 @@ module AdminRisk
         summary: "Could not build admin risk profile.",
         risk_flags: [],
         controls: [],
-        recent_governance: build_recent_governance,
         evidence: [],
         warnings: [],
         block_number: nil,
@@ -190,16 +187,6 @@ module AdminRisk
         type: spec[:type],
         value: result.values.first,
         source: "view"
-      }
-    end
-
-    def build_recent_governance
-      latest = @contract.governance_events.newest_first.first
-      {
-        count: @contract.governance_events.count,
-        latest_event: latest&.event_name,
-        latest_category: latest&.category,
-        latest_block: latest&.block_number
       }
     end
 

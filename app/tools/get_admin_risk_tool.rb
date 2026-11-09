@@ -2,7 +2,7 @@
 
 class GetAdminRiskTool < ApplicationTool
   tool_name "get_admin_risk"
-  description "Get the current admin / risk profile for a verified contract: detected privileged controls, current control values, recent governance summary, evidence, warnings, and freshness metadata. Accepts either a curated slug or chain+address."
+  description "Get the current admin / risk profile for a verified contract: detected privileged controls, current control values, evidence, warnings, and freshness metadata. Accepts either a curated slug or chain+address."
 
   input_schema(
     properties: {
@@ -27,7 +27,6 @@ class GetAdminRiskTool < ApplicationTool
         summary: profile.summary,
         risk_flags: profile.risk_flags,
         controls: profile.controls,
-        recent_governance: profile.recent_governance,
         evidence: profile.evidence,
         warnings: profile.warnings,
         block_number: profile.block_number,
