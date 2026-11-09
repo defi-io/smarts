@@ -25,7 +25,7 @@ CHAIN_SEEDS = [
   {
     name: "Arbitrum One", slug: "arbitrum", chain_id: 42161, tier: "full",
     explorer_api_url: "https://api.etherscan.io/v2/api",
-    rpc_url: "https://arbitrum-one-rpc.publicnode.com"
+    rpc_url: "https://arb1.arbitrum.io/rpc"
   },
   {
     name: "Optimism", slug: "optimism", chain_id: 10, tier: "full",
