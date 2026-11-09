@@ -19,6 +19,11 @@ module GovernanceEvents
     # timeline readable.
     RISK_ACTION_NAMES = %w[Blacklisted UnBlacklisted Frozen Unfrozen].freeze
 
+    # Match a governance suffix but are per-holder token traffic, not admin
+    # actions. ERC20Votes emits DelegateVotesChanged on every transfer between
+    # delegated holders (332k rows on OP alone), which swamped the table.
+    EXCLUDED_NAMES = %w[DelegateVotesChanged].freeze
+
     CATEGORY_ROLE_CHANGE = "role_change"
     CATEGORY_CONFIG      = "config"
     CATEGORY_UPGRADE     = "upgrade"
@@ -46,6 +51,7 @@ module GovernanceEvents
       def category_for(event_abi)
         name = event_abi.is_a?(Hash) ? event_abi["name"] : nil
         return nil unless name.is_a?(String)
+        return nil if EXCLUDED_NAMES.include?(name)
 
         return CATEGORY_RISK_ACTION if RISK_ACTION_NAMES.include?(name)
         return CATEGORY_UPGRADE     if %w[Upgraded AdminChanged].include?(name)

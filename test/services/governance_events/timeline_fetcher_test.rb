@@ -25,6 +25,24 @@ class GovernanceEvents::TimelineFetcherTest < ActiveSupport::TestCase
     assert_equal 0, result.newly_fetched
   end
 
+  test "caps loaded events at EVENTS_LIMIT but counts the full table" do
+    3.times do |i|
+      @contract.governance_events.create!(
+        block_number: 100 + i, tx_hash: "0xcap#{i}", log_index: 0,
+        event_name: "Pause", category: "lifecycle", summary: "Contract paused", args: {}
+      )
+    end
+    @contract.update!(governance_last_scanned_block: @latest_block)
+
+    result = stub_const(GovernanceEvents::TimelineFetcher, :EVENTS_LIMIT, 2) do
+      with_eth_block_number { GovernanceEvents::TimelineFetcher.call(contract: @contract) }
+    end
+
+    assert result.success?, result.error
+    assert_equal 3, result.total_events
+    assert_equal [ 102, 101 ], result.events.map(&:block_number)
+  end
+
   test "fetches recent window when contract has never been scanned" do
     stub_logs(ownership_transferred_log(block_number: @latest_block - 100))
 
@@ -166,8 +184,8 @@ class GovernanceEvents::TimelineFetcherTest < ActiveSupport::TestCase
     assert_match(/OwnershipTransferred/, result.error)
     # Records persisted inside the loop survive the abort. newly_fetched
     # under-reports (it only credits event types that completed cleanly),
-    # but result.events reads from the DB and reflects the truth.
-    assert_equal 1000, result.events.length
+    # but result.total_events counts the DB and reflects the truth.
+    assert_equal 1000, result.total_events
   end
 
   test "paginates within a window when results hit PAGE_SIZE" do

@@ -22,6 +22,11 @@ module GovernanceEvents
     PAGE_SIZE = 1000
     MAX_PAGES_PER_WINDOW = 10
 
+    # Result#events carries only the newest N rows; total_events is a COUNT.
+    # Loading every row (hundreds of thousands on busy contracts) every 30
+    # minutes is what pushed the job worker past 1 GB RSS.
+    EVENTS_LIMIT = 500
+
     Result = Struct.new(:contract, :chain, :total_events, :newly_fetched,
                        :latest_block, :events, :error, :refreshing,
                        keyword_init: true) do
@@ -36,6 +41,12 @@ module GovernanceEvents
 
     def self.call(contract:)
       new(contract: contract).call
+    end
+
+    def self.recent_events(contract, category: nil, limit: EVENTS_LIMIT)
+      scope = contract.governance_events.newest_first
+      scope = scope.where(category: category) if category.present?
+      scope.limit(limit).to_a
     end
 
     def initialize(contract:)
@@ -178,14 +189,13 @@ module GovernanceEvents
     end
 
     def build_result(latest_block:, newly_fetched:, error: nil)
-      events = @contract.governance_events.newest_first.to_a
       Result.new(
         contract: @contract.address,
         chain: @contract.chain.slug,
-        total_events: events.length,
+        total_events: @contract.governance_events.count,
         newly_fetched: newly_fetched,
         latest_block: latest_block,
-        events: events,
+        events: self.class.recent_events(@contract),
         error: error
       )
     end
@@ -209,7 +219,7 @@ module GovernanceEvents
         total_events: 0,
         newly_fetched: 0,
         latest_block: nil,
-        events: @contract.governance_events.newest_first.to_a,
+        events: self.class.recent_events(@contract),
         error: message
       )
     end

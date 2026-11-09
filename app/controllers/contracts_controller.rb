@@ -205,7 +205,7 @@ class ContractsController < ApplicationController
     # in the background via GovernanceTimelineRefreshJob (broadcasts a Turbo
     # morph refresh when done). Keeps the show action sub-second even on cold
     # contracts where a full backfill would otherwise take 5-10s.
-    cached_events = contract.governance_events.newest_first.to_a
+    cached_events = GovernanceEvents::TimelineFetcher.recent_events(contract)
     refreshing = false
 
     unless GovernanceTimelineRefreshJob.fresh?(contract)
@@ -216,7 +216,7 @@ class ContractsController < ApplicationController
     GovernanceEvents::TimelineFetcher::Result.new(
       contract: contract.address,
       chain: contract.chain.slug,
-      total_events: cached_events.length,
+      total_events: contract.governance_events.count,
       newly_fetched: 0,
       latest_block: contract.governance_last_scanned_block,
       events: cached_events,
@@ -231,7 +231,7 @@ class ContractsController < ApplicationController
       total_events: 0,
       newly_fetched: 0,
       latest_block: nil,
-      events: contract.governance_events.newest_first.to_a,
+      events: GovernanceEvents::TimelineFetcher.recent_events(contract),
       error: e.message,
       refreshing: false
     )
