@@ -57,6 +57,24 @@ class McpBearerAuthFlowTest < ActionDispatch::IntegrationTest
     assert_equal "Authorization: Bearer <publish_token> header is missing or invalid", payload["error"]
   end
 
+  test "production MCP hosts pass the transport's Host check" do
+    %w[smarts.md mcp.smarts.md].each do |production_host|
+      host! production_host
+      body = post_mcp(method: "tools/list", params: {}, bearer: nil)
+
+      assert_response :success, "#{production_host} was rejected: #{body.inspect}"
+      assert body.dig("result", "tools").any?
+    end
+  end
+
+  test "unknown Host is rejected by the transport" do
+    host! "evil.example"
+    body = post_mcp(method: "tools/list", params: {}, bearer: nil)
+
+    assert_response :forbidden
+    assert_equal "Forbidden: Invalid Host header", body.dig("error", "message")
+  end
+
   private
 
   # POSTs a single JSON-RPC message to the MCP endpoint and parses the

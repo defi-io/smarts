@@ -1,5 +1,10 @@
 # Audit all gems listed in the Gemfile for known security problems by running bin/bundler-audit.
-# CVEs that are not relevant to the application can be enumerated on the ignore list below.
-
+# Advisories we have reviewed and are knowingly not acting on yet.
+# Re-check each entry whenever its gem is upgraded; delete the entry when the
+# fixed version is in Gemfile.lock.
 ignore:
-  - CVE-THAT-DOES-NOT-APPLY
+  # ruby_llm 1.16.0: three ReDoS advisories, fixed only in 2.0.0.rc1 (a
+  # release candidate). Revisit when 2.0 is final. Same call as pickful.
+  - CVE-2026-67987
+  - CVE-2026-67989
+  - CVE-2026-67991
