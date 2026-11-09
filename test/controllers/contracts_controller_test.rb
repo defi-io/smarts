@@ -1078,6 +1078,21 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_match 'href="/eth/0x1111111111111111111111111111111111111111/governance?gov_category=role_change"', response.body
   end
 
+  test "governance island renders only the newest EVENTS_LIMIT events" do
+    contract = contracts(:uni_token)
+    seed_governance_event(contract, name: "Pause", category: "lifecycle", summary: "old pause", block: 1)
+    seed_governance_event(contract, name: "Unpause", category: "lifecycle", summary: "new unpause", block: 2)
+    mark_governance_fresh(contract)
+
+    stub_const(GovernanceEvents::TimelineFetcher, :EVENTS_LIMIT, 1) do
+      get "/eth/#{contract.address}/governance"
+    end
+
+    assert_response :success
+    assert_match "new unpause", response.body
+    refute_match "old pause", response.body
+  end
+
   test "governance island filters by gov_category" do
     contract = contracts(:uni_token)
     seed_governance_event(contract, name: "Blacklisted", category: "risk_action", summary: "x added")

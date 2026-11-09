@@ -12,7 +12,7 @@ class GetGovernanceTimelineTool < ApplicationTool
       chain:    { type: "string", description: "Chain slug. Tier 1 (live data) only: eth, base, arbitrum, optimism, bnb, polygon, robinhood, arc. Tier 2 (docs-only) chains return an error. Required unless `slug` is given." },
       address:  { type: "string", description: "0x-prefixed contract address. Required unless `slug` is given." },
       category: { type: "string", description: "Optional. Filter to one of: #{CATEGORIES.join(', ')}." },
-      limit:    { type: "integer", description: "Max events to return. Default 100, no hard cap." }
+      limit:    { type: "integer", description: "Max events to return. Default 100, capped at #{GovernanceEvents::TimelineFetcher::EVENTS_LIMIT}." }
     }
   )
 
@@ -24,9 +24,9 @@ class GetGovernanceTimelineTool < ApplicationTool
       _chain_record, contract = resolved
       result = GovernanceEvents::TimelineFetcher.call(contract: contract)
 
-      events = result.events
-      events = events.select { |e| e.category == category } if category.present?
-      events = events.first(limit.to_i) if limit.to_i.positive?
+      cap = GovernanceEvents::TimelineFetcher::EVENTS_LIMIT
+      limit = limit.to_i.positive? ? [ limit.to_i, cap ].min : cap
+      events = GovernanceEvents::TimelineFetcher.recent_events(contract, category: category, limit: limit)
 
       base = {
         contract: result.contract,

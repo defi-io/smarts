@@ -63,6 +63,18 @@ module ActiveSupport
       receiver.define_singleton_method(method_name, original)
     end
 
+    # Temporarily redefines a constant (e.g. a cap) so tests can exercise it
+    # with a handful of rows instead of hundreds.
+    def stub_const(klass, name, value)
+      original = klass.const_get(name)
+      klass.send(:remove_const, name)
+      klass.const_set(name, value)
+      yield
+    ensure
+      klass.send(:remove_const, name)
+      klass.const_set(name, original)
+    end
+
     # Wraps a per-call Result array into a Multicall3Client::Batch for stubs.
     # `Multicall3Client.call` now returns a Batch struct (block_number +
     # results); this keeps existing test fixtures terse. Default block_number

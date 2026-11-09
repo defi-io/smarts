@@ -17,7 +17,7 @@ class GetGovernanceTimelineToolTest < ActiveSupport::TestCase
   end
 
   test "delegates to TimelineFetcher and shapes the payload" do
-    fake_event = GovernanceEvent.new(
+    fake_event = @contract.governance_events.create!(
       block_number: 18_234_567,
       tx_hash: "0xabc",
       log_index: 0,
@@ -134,11 +134,29 @@ class GetGovernanceTimelineToolTest < ActiveSupport::TestCase
     end
   end
 
+  test "category filter runs in SQL so older events beyond the cap still match" do
+    make_event(event_name: "Upgraded", category: "upgrade", tx_hash: "0xold", block_number: 1)
+    3.times { |i| make_event(event_name: "Pause", category: "lifecycle", tx_hash: "0xn#{i}", block_number: 100 + i) }
+    fake_result = GovernanceEvents::TimelineFetcher::Result.new(
+      contract: @contract.address, chain: "eth",
+      total_events: 4, newly_fetched: 0, latest_block: 25_000_000, events: [], error: nil
+    )
+
+    stub_const(GovernanceEvents::TimelineFetcher, :EVENTS_LIMIT, 2) do
+      stub_class_method(GovernanceEvents::TimelineFetcher, :call, ->(**_) { fake_result }) do
+        assert_equal 2, @tool.payload(chain: "eth", address: @contract.address, limit: 50)[:events].length
+
+        upgrade = @tool.payload(chain: "eth", address: @contract.address, category: "upgrade")
+        assert_equal [ "0xold" ], upgrade[:events].map { |e| e[:tx_hash] }
+      end
+    end
+  end
+
   private
 
-  def make_event(event_name:, category:, tx_hash: "0xabc")
-    GovernanceEvent.new(
-      block_number: 18_000_000,
+  def make_event(event_name:, category:, tx_hash: "0xabc", block_number: 18_000_000)
+    @contract.governance_events.create!(
+      block_number: block_number,
       tx_hash: tx_hash,
       log_index: 0,
       event_name: event_name,

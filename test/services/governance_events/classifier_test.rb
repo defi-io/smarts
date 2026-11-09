@@ -32,6 +32,12 @@ class GovernanceEvents::ClassifierTest < ActiveSupport::TestCase
     end
   end
 
+  test "ignores ERC20Votes DelegateVotesChanged (per-holder traffic, not governance)" do
+    event = { "name" => "DelegateVotesChanged", "type" => "event" }
+    assert_nil GovernanceEvents::Classifier.category_for(event)
+    assert_equal [], GovernanceEvents::Classifier.filter([ event ])
+  end
+
   test "categorizes proxy upgrade events" do
     assert_equal "upgrade", GovernanceEvents::Classifier.category_for({ "name" => "Upgraded" })
     assert_equal "upgrade", GovernanceEvents::Classifier.category_for({ "name" => "AdminChanged" })
