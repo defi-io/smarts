@@ -23,6 +23,19 @@ class DefiLlamaClientTest < ActiveSupport::TestCase
     assert_equal({}, DefiLlamaClient.fetch_prices(chain: unknown_chain, addresses: [ USDC ]))
   end
 
+  test "maps Arc and Robinhood Chain to their DefiLlama slugs" do
+    arc_usdc = "0x3600000000000000000000000000000000000000"
+    { "arc" => "arc", "robinhood" => "robinhood" }.each do |ours, llama|
+      stub_request(:get, "https://coins.llama.fi/prices/current/#{llama}:#{arc_usdc}").to_return(
+        status: 200,
+        body: { "coins" => { "#{llama}:#{arc_usdc}" => { "price" => 1.0, "symbol" => "USDC", "decimals" => 6 } } }.to_json,
+        headers: { "Content-Type" => "application/json" }
+      )
+      chain = Chain.new(slug: ours, chain_id: 1)
+      assert_equal 1.0, DefiLlamaClient.fetch_prices(chain: chain, addresses: [ arc_usdc ])[arc_usdc]["price"], ours
+    end
+  end
+
   test "fetches and maps prices by lowercased address" do
     stub_request(:get, %r{coins\.llama\.fi/prices/current/}).to_return(
       status: 200,

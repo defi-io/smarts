@@ -11,7 +11,9 @@ class DefiLlamaClient
     "arbitrum" => "arbitrum",
     "optimism" => "optimism",
     "bnb"      => "bsc",
-    "polygon"  => "polygon"
+    "polygon"  => "polygon",
+    "robinhood" => "robinhood",
+    "arc"      => "arc"
   }.freeze
 
   # Returns {lowercased_address => {"price" => Float, "symbol" => String, "decimals" => Integer, "confidence" => Float}}

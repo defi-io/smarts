@@ -158,4 +158,9 @@ class GetErc20InfoToolTest < ActiveSupport::TestCase
       end
     end
   end
+
+  test "description points admin controls to get_admin_risk, not governance" do
+    refute_match(/governance/i, GetErc20InfoTool.description)
+    assert_match "get_admin_risk", GetErc20InfoTool.description
+  end
 end
