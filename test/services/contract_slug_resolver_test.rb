@@ -122,6 +122,8 @@ class ContractSlugResolverTest < ActiveSupport::TestCase
                  ContractSlugResolver.resolve("aavev3-pool-eth")
     assert_equal [ "base", "0xa238dd80c259a72e81d7e4664a9801593f98d1c5" ],
                  ContractSlugResolver.resolve("aavev3-pool-base")
+    assert_equal [ "bnb", "0x6807dc923806fe8fd134338eabca509979a7e0cb" ],
+                 ContractSlugResolver.resolve("aavev3-pool-bnb")
   end
 
   test "curated protocol slugs include the Polymarket contract family on Polygon" do
