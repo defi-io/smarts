@@ -91,7 +91,7 @@ external_apis:
   etherscan: Etherscan V2 API (多链统一 key)
   blockscout: 链自有 Blockscout 实例的 Etherscan 兼容 /api
               （当前用于 Robinhood Chain，见下方"区块浏览器数据源"）
-  sourcify: Sourcify 验证 API（当前用于 Arc；ArcScan 已上线，但源码索引尚不完整）
+  sourcify: Sourcify 验证 API（Arc 先查 Sourcify，未验证再查 ArcScan / Etherscan V2）
   tvl_yields: DefiLlama API (free, 做速率限制)
   prices: CoinGecko API
   polymarket: Gamma + CLOB read-only APIs (Polymarket 例外，见下文)
@@ -156,10 +156,11 @@ Blockscout 的三处差异（未验证无 sentinel、代理字段是 `IsProxy`/`
   `SourcifyClient` 里，基类只多了一个 `request_path` 扩展点。
 - Sourcify 自带 proxy 解析（`proxyResolution.implementations[]`），且 `sources` 直接就是
   `{path => {content}}`，不需要像 Blockscout 那样重组 `AdditionalSources`。
-- ⚠️ ArcScan 上线当天的源码索引仍很稀疏：项目收录的六个合约中，USDC 只有 proxy 已验证，
-  implementation 未验证，其余五个也无法由 Etherscan API 完整读取，因此切换会造成回归。
-  Sourcify 当前至少可完整读取 Permit2。继续定期探测这六个地址，覆盖率不低于 Sourcify 后
-  再把 `explorer_api_url` 切到 Etherscan V2。RPC 侧工具不受此选择影响。
+- 2026-11-09 复测：两边各只覆盖一部分——ArcScan（Etherscan V2）能读 USDC（含 implementation）
+  和 Multicall3，Sourcify 能读 USYC 和 Permit2，EURC 与 FxEscrow 两边都未验证，已移出收录目录（验证后再加回）。所以
+  `Chain#explorer_client` 对 Sourcify 链返回 `FallbackExplorerClient`：先 Sourcify，未验证再
+  Etherscan V2（`EtherscanClient.new(chain, api_url: V2_API_URL)`，seed 不变）。全部未验证才报
+  `NotVerifiedError`；任一源是限流/故障则抛该错误，避免把故障显示成"未验证"。RPC 侧工具不受影响。
 - gas token 是**原生 USDC**（`0x3600…0000` predeploy），不是 ETH；`NATIVE_SYMBOLS` 已特判。
   注意其内部 18 decimals 而 ERC-20 表面 6 decimals，transfer 由 system emitter 发出。
 - 公共 RPC `rpc.mainnet.arc.io`（另有 QuickNode / Blockdaemon / dRPC 镜像）实测

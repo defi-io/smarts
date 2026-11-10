@@ -55,6 +55,7 @@ module Chains
         )
       end
       seed_contract_slugs
+      prune_removed_catalog_entries
     end
 
     def seed_contract_slugs
@@ -64,6 +65,21 @@ module Chains
         contract.catalog_slug = attrs.fetch(:slug)
         contract.save!
       end
+    end
+
+    # The seed file is the whole catalog: a contract dropped from it loses its
+    # catalog listing and slug on the next deploy. The contract row itself
+    # (ABI, source) stays, so its hex URL keeps working.
+    def prune_removed_catalog_entries
+      seeded = (CHAIN_CONTRACT_SEEDS + CONTRACT_SLUG_SEEDS)
+               .map { |attrs| [ attrs.fetch(:chain_slug), attrs.fetch(:address).downcase ] }.to_set
+
+      Contract.joins(:chain)
+              .where("contracts.catalog_name IS NOT NULL OR contracts.catalog_slug IS NOT NULL")
+              .select("contracts.id, contracts.address, chains.slug AS chain_slug")
+              .reject { |c| seeded.include?([ c.chain_slug, c.address ]) }
+              .then { |stale| Contract.where(id: stale.map(&:id)) }
+              .update_all(catalog_name: nil, catalog_slug: nil, catalog_kind: nil, catalog_notes: nil, catalog_order: nil)
     end
   end
 end
