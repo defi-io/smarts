@@ -325,7 +325,8 @@ smarts/
 │   │   │   ├── multicall3_client.rb         # 批量 eth_call
 │   │   │   ├── view_caller.rb               # 单函数 eth_call
 │   │   │   ├── event_decoder.rb             # 事件日志解码
-│   │   │   └── proxy_resolver.rb            # EIP-1967 / 透明代理识别
+│   │   │   ├── proxy_resolver.rb            # EIP-1967 / 透明代理识别
+│   │   │   └── uniswap_v3_quoter.rb         # Factory.getPool 找池 + QuoterV2 报价 / 价格冲击（eth/base/arbitrum/optimism/polygon/bnb）
 │   │   │
 │   │   ├── explorer_client.rb               # 浏览器 client 基类（错误类型 / 限流 / Faraday）
 │   │   ├── etherscan_client.rb              # Etherscan V2 API
@@ -347,6 +348,7 @@ smarts/
 │   │
 │   ├── tools/                               # MCP tools（mcp gem 风格）
 │   │   ├── application_tool.rb              # 基类（slug/chain+address 解析、Hash → MCP::Tool::Response）
+│   │   ├── find_uniswap_v3_pools_tool.rb    # 一对代币在各费率档的 V3 池
 │   │   ├── get_contract_info_tool.rb        # 合约元数据
 │   │   ├── get_contract_source_tool.rb      # 源码索引/取文件/grep
 │   │   ├── get_aave_v3_market_tool.rb       # Aave V3 市场（各资产 APY / 存借量 / LTV / 上限）
@@ -354,6 +356,7 @@ smarts/
 │   │   ├── get_protocol_tvl_tool.rb         # DefiLlama 协议 TVL（总量 / 各链 / 1d·7d 变化）
 │   │   ├── get_stablecoin_supply_tool.rb    # DefiLlama 稳定币流通量（总量 / 各链 / 锚定）
 │   │   ├── get_yield_pools_tool.rb          # DefiLlama 收益池（按项目 / 链 / 代币筛选）
+│   │   ├── quote_uniswap_v3_swap_tool.rb    # V3 单池报价：输出量、执行价 vs 现货、价格冲击、gas
 │   │   ├── get_recent_events_tool.rb        # 合约近期事件（按 ABI 解码）
 │   │   ├── get_uniswap_v3_pool_tool.rb      # Uniswap V3 池实时状态
 │   │   ├── inspect_address_tool.rb          # 任意地址分类（EOA / contract / EIP-7702）

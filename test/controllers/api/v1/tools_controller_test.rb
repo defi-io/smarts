@@ -67,7 +67,7 @@ class Api::V1::ToolsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_equal({ chain: "base", min_tvl_usd: 2_500_000.5, stablecoin_only: false, limit: 5 }, seen)
 
-    %w[get_stablecoin_supply get_protocol_tvl].each do |name|
+    %w[get_stablecoin_supply get_protocol_tvl find_uniswap_v3_pools quote_uniswap_v3_swap].each do |name|
       assert Api::V1::ToolsController::TOOL_MAP.key?(name), name
     end
   end

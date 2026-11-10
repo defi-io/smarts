@@ -611,4 +611,10 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
     assert_includes examples, "get_stablecoin_supply"
     assert_includes examples, "get_yield_pools"
   end
+
+  test "Uniswap V3 quote tools are advertised in discovery" do
+    get "/.well-known/ai-plugin.json"
+    assert_match "pool discovery and swap quotes", JSON.parse(response.body)["description_for_model"]
+    assert_includes MarketingController::MCP_EXAMPLE_QUERIES.map { |q| q[:tool] }, "quote_uniswap_v3_swap"
+  end
 end

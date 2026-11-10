@@ -56,6 +56,7 @@ class MarketingController < ApplicationController
 
   # Tools exposed over MCP. Kept in sync with app/tools/*.
   MCP_TOOLS = [
+    { name: "find_uniswap_v3_pools", blurb: "Every Uniswap V3 pool for a token pair (one per fee tier): address, liquidity, tick, spot price." },
     { name: "get_contract_info",    blurb: "Metadata about a verified contract: name, classification, adapter, function counts." },
     { name: "get_contract_source",  blurb: "Fetch the verified Solidity source: file index, single-file content, or substring grep across files." },
     { name: "get_admin_risk",       blurb: "Current admin / risk profile for a verified contract: detected controls, current values, and warnings." },
@@ -73,6 +74,7 @@ class MarketingController < ApplicationController
     { name: "list_article_drafts",  blurb: "Authenticated publishing workflow: list multilingual article drafts under docs/drafts." },
     { name: "publish_article",      blurb: "Authenticated publishing workflow: validate and publish a multilingual draft into article pages." },
     { name: "validate_article_draft", blurb: "Authenticated publishing workflow: validate one multilingual article draft without saving." },
+    { name: "quote_uniswap_v3_swap", blurb: "Uniswap V3 swap quote per fee tier: amount out, execution vs spot price, price impact, gas estimate." },
     { name: "read_contract_state",  blurb: "Read any view/pure function by name, with positional args. Returns decoded output." }
   ].freeze
 
@@ -82,6 +84,7 @@ class MarketingController < ApplicationController
     { q: "What's the USDC supply APY on Aave V3 Base right now?", tool: "get_aave_v3_market" },
     { q: "How much USDC circulates on Base?",                  tool: "get_stablecoin_supply" },
     { q: "What are the best USDC yields on Arbitrum above $10M TVL?", tool: "get_yield_pools" },
+    { q: "How much slippage would selling 1,000 WETH for USDC on Base take?", tool: "quote_uniswap_v3_swap" },
     { q: "Who is 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045?",  tool: "inspect_address" },
     { q: "Get the total supply of USDT on Arbitrum.",           tool: "get_erc20_info" },
     { q: "Who can blacklist my USDC balance?",                  tool: "get_erc20_info" },
@@ -172,7 +175,7 @@ class MarketingController < ApplicationController
       name_for_human: "Smarts — Smart Contract Docs",
       name_for_model: "smarts",
       description_for_human: "Live docs for every verified smart contract. Query on-chain state, token info, and admin risk across Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, and Arc.",
-      description_for_model: "Use the Smarts API to read live on-chain state for verified smart contracts on EVM chains (Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, Arc). You can look up ERC-20 token metadata and prices, Uniswap V3 pool state, Aave V3 lending markets, DefiLlama stablecoin supply, protocol TVL and yield pools, admin risk profiles, Polymarket markets, contract source code, and call any view function. Use curated slugs (e.g. 'usdc-eth', 'uni-eth') or chain+address pairs.",
+      description_for_model: "Use the Smarts API to read live on-chain state for verified smart contracts on EVM chains (Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, Arc). You can look up ERC-20 token metadata and prices, Uniswap V3 pool state, pool discovery and swap quotes, Aave V3 lending markets, DefiLlama stablecoin supply, protocol TVL and yield pools, admin risk profiles, Polymarket markets, contract source code, and call any view function. Use curated slugs (e.g. 'usdc-eth', 'uni-eth') or chain+address pairs.",
       auth: { type: "none" },
       api: {
         type: "openapi",

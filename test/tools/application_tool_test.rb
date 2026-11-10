@@ -55,4 +55,11 @@ class ApplicationToolTest < ActiveSupport::TestCase
     assert result.is_a?(Array)
     assert_equal chains(:ethereum), result[0]
   end
+
+  test "resolve_token accepts addresses and same-chain curated slugs" do
+    assert_equal [ "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", nil ], ApplicationTool.resolve_token("eth", "0xA0b86991c6218b36c1d19d4a2e9eB0cE3606eB48")
+    assert_equal [ "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", nil ], ApplicationTool.resolve_token("eth", "usdc-eth")
+    assert_equal "usdc-eth is on eth, not base", ApplicationTool.resolve_token("base", "usdc-eth").last[:error]
+    assert_match(/0x address or a curated slug/, ApplicationTool.resolve_token("eth", "USDC").last[:error])
+  end
 end

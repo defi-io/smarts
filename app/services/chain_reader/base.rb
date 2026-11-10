@@ -83,7 +83,9 @@ module ChainReader
       end
 
       def function_signature(fn_abi)
-        types = Array(fn_abi["inputs"]).map { |i| i["type"] }.join(",")
+        # Struct params must be spelled out — `f((address,uint256))`, not
+        # `f(tuple)` — or the selector is wrong and the call reverts.
+        types = Array(fn_abi["inputs"]).map { |i| abi_type_string(i) }.join(",")
         "#{fn_abi['name']}(#{types})"
       end
 

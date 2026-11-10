@@ -70,6 +70,20 @@ class ApplicationTool < MCP::Tool
       [ chain_record, contract ]
     end
 
+    # Token argument → lowercased address. Accepts a 0x address or a curated
+    # slug on the same chain (e.g. "usdc-base"). Returns [address, nil] or
+    # [nil, error_hash].
+    def resolve_token(chain_slug, value)
+      text = value.to_s.strip
+      return [ text.downcase, nil ] if text.match?(/\A0x[0-9a-fA-F]{40}\z/)
+
+      lookup = ContractSlugResolver.resolve(text.downcase)
+      return [ nil, { error: "token must be a 0x address or a curated slug: #{value.inspect}" } ] unless lookup
+      return [ nil, { error: "#{text} is on #{lookup[0]}, not #{chain_slug}" } ] unless lookup[0] == chain_slug
+
+      [ lookup[1].downcase, nil ]
+    end
+
     # Returns an error hash if the chain is docs_only, nil otherwise.
     # Used by tools that need live RPC data (state, events, balances).
     def check_full_tier(chain_record)
