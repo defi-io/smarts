@@ -43,6 +43,15 @@ class ChainReader::BaseTest < ActiveSupport::TestCase
     assert_equal "totalSupply()", ChainReader::Base.function_signature(fn)
   end
 
+  test "function_signature spells out struct params so the selector is right" do
+    fn = { "name" => "quoteExactInputSingle", "inputs" => [ { "type" => "tuple", "components" => [
+      { "type" => "address" }, { "type" => "address" }, { "type" => "uint256" }, { "type" => "uint24" }, { "type" => "uint160" }
+    ] } ] }
+    assert_equal "quoteExactInputSingle((address,address,uint256,uint24,uint160))", ChainReader::Base.function_signature(fn)
+    # QuoterV2's real selector
+    assert_equal "0xc6a5026a", ChainReader::Base.selector(ChainReader::Base.function_signature(fn))
+  end
+
   test "function_signature tolerates missing inputs key" do
     fn = { "name" => "name" }
     assert_equal "name()", ChainReader::Base.function_signature(fn)

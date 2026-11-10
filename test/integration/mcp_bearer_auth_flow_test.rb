@@ -78,7 +78,7 @@ class McpBearerAuthFlowTest < ActionDispatch::IntegrationTest
   test "tools/list advertises the Aave and DefiLlama tools" do
     body = post_mcp(method: "tools/list", params: {}, bearer: nil)
     names = body.dig("result", "tools").map { |t| t["name"] }
-    %w[get_aave_v3_market get_stablecoin_supply get_protocol_tvl get_yield_pools].each { |tool| assert_includes names, tool }
+    %w[get_aave_v3_market get_stablecoin_supply get_protocol_tvl get_yield_pools find_uniswap_v3_pools quote_uniswap_v3_swap].each { |tool| assert_includes names, tool }
   end
 
   private

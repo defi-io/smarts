@@ -16,6 +16,7 @@ module Api
 
       # Public tools only — auth-gated publishing tools are excluded.
       TOOL_MAP = {
+        "find_uniswap_v3_pools"    => FindUniswapV3PoolsTool,
         "get_contract_info"        => GetContractInfoTool,
         "get_contract_source"      => GetContractSourceTool,
         "get_admin_risk"           => GetAdminRiskTool,
@@ -30,6 +31,7 @@ module Api
         "get_uniswap_v3_pool"      => GetUniswapV3PoolTool,
         "get_yield_pools"          => GetYieldPoolsTool,
         "inspect_address"          => InspectAddressTool,
+        "quote_uniswap_v3_swap"    => QuoteUniswapV3SwapTool,
         "read_contract_state"      => ReadContractStateTool
       }.freeze
 
