@@ -233,6 +233,27 @@ class ChainReader::Multicall3ClientTest < ActiveSupport::TestCase
                     "outer calldata should reference the multicall3 address as a target"
   end
 
+  test "on Arbitrum the batch block height comes from ArbSys.arbBlockNumber (L2), not getBlockNumber (L1)" do
+    calls = [ call_for("totalSupply", [], [ "uint256" ]) ]
+    fake_response = encode_multicall_response(
+      [ [ true, Eth::Abi.encode([ "uint256" ], [ 1 ]) ] ],
+      block_number: 522_844_344
+    )
+
+    captured = {}
+    spy = ->(_chain, to:, data:) { captured[:data] = data; fake_response }
+
+    stub_class_method(ChainReader::Base, :eth_call_hex, spy) do
+      batch = ChainReader::Multicall3Client.call(chain: chains(:arbitrum), calls: calls)
+      assert_equal 522_844_344, batch.block_number
+    end
+
+    assert_includes captured[:data], ChainReader::Base.selector("arbBlockNumber()")[2..]
+    assert_includes captured[:data].downcase, ChainReader::Multicall3Client::ARB_SYS_ADDRESS.sub(/\A0x/, "")
+    refute_includes captured[:data], ChainReader::Base.selector("getBlockNumber()")[2..],
+                    "the L1-flavoured getBlockNumber must not be used on Arbitrum"
+  end
+
   test "block_number is nil when the appended getBlockNumber call reverts" do
     calls = [ call_for("totalSupply", [], [ "uint256" ]) ]
     fake_response = encode_multicall_response(

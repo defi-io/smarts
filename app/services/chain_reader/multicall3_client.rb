@@ -12,6 +12,17 @@ module ChainReader
       "outputs" => [ { "type" => "uint256" } ]
     }.freeze
 
+    # On Arbitrum, block.number (and so Multicall3.getBlockNumber) returns an
+    # approximate L1 Ethereum block, not the L2 block. ArbSys precompile's
+    # arbBlockNumber() is the L2 height that eth_blockNumber reports.
+    ARB_SYS_ADDRESS = "0x0000000000000000000000000000000000000064"
+    ARB_BLOCK_NUMBER_FN = {
+      "name" => "arbBlockNumber",
+      "inputs" => [],
+      "outputs" => [ { "type" => "uint256" } ]
+    }.freeze
+    ARBITRUM_CHAIN_IDS = [ 42_161 ].freeze
+
     Call = Struct.new(:target, :function, :args, keyword_init: true) do
       def args
         self[:args] || []
@@ -33,7 +44,7 @@ module ChainReader
     def call(calls)
       return Batch.new(block_number: nil, results: []) if calls.empty?
 
-      block_call = Call.new(target: ADDRESS, function: BLOCK_NUMBER_FN)
+      block_call = block_number_call
       augmented = calls + [ block_call ]
 
       tuples = augmented.map do |c|
@@ -55,6 +66,14 @@ module ChainReader
     end
 
     private
+
+    def block_number_call
+      if ARBITRUM_CHAIN_IDS.include?(@chain.chain_id)
+        Call.new(target: ARB_SYS_ADDRESS, function: ARB_BLOCK_NUMBER_FN)
+      else
+        Call.new(target: ADDRESS, function: BLOCK_NUMBER_FN)
+      end
+    end
 
     def inner_calldata(fn_abi, args)
       sel = Base.selector(Base.function_signature(fn_abi))
