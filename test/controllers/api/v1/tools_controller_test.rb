@@ -57,4 +57,18 @@ class Api::V1::ToolsControllerTest < ActionDispatch::IntegrationTest
     end
     assert_equal({ chain: "base", asset: "USDC" }, seen)
   end
+
+  test "DefiLlama dataset tools are exposed over REST with number and boolean params coerced" do
+    seen = nil
+    stub = ->(**kwargs) { seen = kwargs; { pools: [] } }
+    stub_class_method(GetYieldPoolsTool, :payload, stub) do
+      get api_v1_tool_path(tool_name: "get_yield_pools", chain: "base", min_tvl_usd: "2500000.5", stablecoin_only: "false", limit: "5")
+      assert_response :success
+    end
+    assert_equal({ chain: "base", min_tvl_usd: 2_500_000.5, stablecoin_only: false, limit: 5 }, seen)
+
+    %w[get_stablecoin_supply get_protocol_tvl].each do |name|
+      assert Api::V1::ToolsController::TOOL_MAP.key?(name), name
+    end
+  end
 end

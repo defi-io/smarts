@@ -24,8 +24,11 @@ module Api
         "get_polymarket_market"    => GetPolymarketMarketTool,
         "get_polymarket_position"  => GetPolymarketPositionTool,
         "get_polymarket_resolution" => GetPolymarketResolutionTool,
+        "get_protocol_tvl"         => GetProtocolTvlTool,
         "get_recent_events"        => GetRecentEventsTool,
+        "get_stablecoin_supply"    => GetStablecoinSupplyTool,
         "get_uniswap_v3_pool"      => GetUniswapV3PoolTool,
+        "get_yield_pools"          => GetYieldPoolsTool,
         "inspect_address"          => InspectAddressTool,
         "read_contract_state"      => ReadContractStateTool
       }.freeze
@@ -71,6 +74,10 @@ module Api
         case type
         when "integer"
           value.to_i
+        when "number"
+          value.to_f
+        when "boolean"
+          ActiveModel::Type::Boolean.new.cast(value)
         when "array"
           value.is_a?(Array) ? value : value.to_s.split(",")
         else

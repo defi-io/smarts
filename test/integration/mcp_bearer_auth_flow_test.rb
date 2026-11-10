@@ -75,9 +75,10 @@ class McpBearerAuthFlowTest < ActionDispatch::IntegrationTest
     assert_equal "Forbidden: Invalid Host header", body.dig("error", "message")
   end
 
-  test "tools/list advertises get_aave_v3_market" do
+  test "tools/list advertises the Aave and DefiLlama tools" do
     body = post_mcp(method: "tools/list", params: {}, bearer: nil)
-    assert_includes body.dig("result", "tools").map { |t| t["name"] }, "get_aave_v3_market"
+    names = body.dig("result", "tools").map { |t| t["name"] }
+    %w[get_aave_v3_market get_stablecoin_supply get_protocol_tvl get_yield_pools].each { |tool| assert_includes names, tool }
   end
 
   private
