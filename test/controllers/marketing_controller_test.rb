@@ -602,4 +602,13 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
 
     assert_includes MarketingController::MCP_EXAMPLE_QUERIES.map { |q| q[:tool] }, "get_aave_v3_market"
   end
+
+  test "DefiLlama dataset tools are advertised in discovery" do
+    get "/.well-known/ai-plugin.json"
+    assert_match "DefiLlama stablecoin supply, protocol TVL and yield pools", JSON.parse(response.body)["description_for_model"]
+
+    examples = MarketingController::MCP_EXAMPLE_QUERIES.map { |q| q[:tool] }
+    assert_includes examples, "get_stablecoin_supply"
+    assert_includes examples, "get_yield_pools"
+  end
 end

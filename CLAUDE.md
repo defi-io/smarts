@@ -92,7 +92,7 @@ external_apis:
   blockscout: 链自有 Blockscout 实例的 Etherscan 兼容 /api
               （当前用于 Robinhood Chain，见下方"区块浏览器数据源"）
   sourcify: Sourcify 验证 API（Arc 先查 Sourcify，未验证再查 ArcScan / Etherscan V2）
-  tvl_yields: DefiLlama API (free, 做速率限制)
+  tvl_yields: DefiLlama API (free, 做速率限制；整库数据集见 DefiLlamaDatasets：stablecoins / protocols / yields，进程内缓存 10 分钟，单次解析约 35–50MB 堆，不得改成按请求拉取)
   prices: CoinGecko API
   polymarket: Gamma + CLOB read-only APIs (Polymarket 例外，见下文)
   rpc: Alchemy + 自建 public RPC fallback
@@ -351,6 +351,9 @@ smarts/
 │   │   ├── get_contract_source_tool.rb      # 源码索引/取文件/grep
 │   │   ├── get_aave_v3_market_tool.rb       # Aave V3 市场（各资产 APY / 存借量 / LTV / 上限）
 │   │   ├── get_erc20_info_tool.rb           # ERC-20 实时元数据
+│   │   ├── get_protocol_tvl_tool.rb         # DefiLlama 协议 TVL（总量 / 各链 / 1d·7d 变化）
+│   │   ├── get_stablecoin_supply_tool.rb    # DefiLlama 稳定币流通量（总量 / 各链 / 锚定）
+│   │   ├── get_yield_pools_tool.rb          # DefiLlama 收益池（按项目 / 链 / 代币筛选）
 │   │   ├── get_recent_events_tool.rb        # 合约近期事件（按 ABI 解码）
 │   │   ├── get_uniswap_v3_pool_tool.rb      # Uniswap V3 池实时状态
 │   │   ├── inspect_address_tool.rb          # 任意地址分类（EOA / contract / EIP-7702）

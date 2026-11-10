@@ -35,7 +35,7 @@ Rails.application.routes.draw do
   mcp_server = MCP::Server.new(
     name: "smarts",
     version: "0.1.0",
-    instructions: "Live docs for verified smart contracts on Ethereum, Base, Arbitrum, Optimism, BNB Smart Chain, Polygon, Robinhood Chain, and Arc. Use these tools to read on-chain state, ERC-20 token info, Uniswap V3 pool state, Aave V3 lending markets, and to classify any address.",
+    instructions: "Live docs for verified smart contracts on Ethereum, Base, Arbitrum, Optimism, BNB Smart Chain, Polygon, Robinhood Chain, and Arc. Use these tools to read on-chain state, ERC-20 token info, Uniswap V3 pool state, Aave V3 lending markets, DefiLlama stablecoin supply / protocol TVL / yield pools, and to classify any address.",
     tools: [
       GetContractInfoTool,
       GetContractSourceTool,
@@ -45,8 +45,11 @@ Rails.application.routes.draw do
       GetPolymarketMarketTool,
       GetPolymarketPositionTool,
       GetPolymarketResolutionTool,
+      GetProtocolTvlTool,
       GetRecentEventsTool,
+      GetStablecoinSupplyTool,
       GetUniswapV3PoolTool,
+      GetYieldPoolsTool,
       InspectAddressTool,
       ListArticleDraftsTool,
       PublishArticleTool,
