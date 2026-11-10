@@ -42,6 +42,13 @@ module Api
         kwargs = extract_kwargs(tool_class)
         result = tool_class.payload(**kwargs)
 
+        # A tool-level error ("unknown slug", "not indexed", RPC failure) is
+        # a 422 per our OpenAPI spec, and must not sit in a shared cache.
+        if ApplicationTool.error_payload?(result)
+          response.headers["Cache-Control"] = "no-store"
+          return render json: result, status: :unprocessable_entity
+        end
+
         expires_in 60.seconds, public: true
         render json: result
       rescue ArgumentError => e

@@ -32,7 +32,13 @@ class ApplicationTool < MCP::Tool
     def text_response(hash)
       return hash if hash.is_a?(MCP::Tool::Response)
 
-      MCP::Tool::Response.new([ { type: "text", text: hash.to_json } ])
+      MCP::Tool::Response.new([ { type: "text", text: hash.to_json } ], error: error_payload?(hash))
+    end
+
+    # Every tool reports failure as a Hash with a non-blank :error. MCP
+    # clients get isError: true and REST callers a 422 from that one rule.
+    def error_payload?(hash)
+      hash.is_a?(Hash) && hash[:error].present?
     end
 
     # Resolves a tool's contract input (either a slug OR chain+address) to a

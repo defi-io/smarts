@@ -37,7 +37,8 @@ class GetProtocolTvlTool < ApplicationTool
         change_7d_pct: match[:change_7d]&.round(3),
         url: match[:url],
         chain_count: match[:chains].size,
-        top_chains: match[:chains].first(CHAIN_LIMIT).map { |c, tvl| { chain: c, tvl_usd: tvl } }
+        top_chains: match[:chains].first(CHAIN_LIMIT).map { |c, tvl| { chain: c, tvl_usd: tvl } },
+        fetched_at: DefiLlamaDatasets.fetched_at("protocols")&.utc&.iso8601
       }
     rescue DefiLlamaDatasets::Error => e
       { error: e.message }

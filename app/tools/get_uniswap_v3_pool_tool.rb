@@ -17,7 +17,7 @@ class GetUniswapV3PoolTool < ApplicationTool
       resolved = resolve_contract(chain: chain, address: address, slug: slug, require_full: true)
       return resolved if resolved.is_a?(Hash)
 
-      _chain_record, contract = resolved
+      chain_record, contract = resolved
       adapter = ProtocolAdapters::Base.resolve(contract)
       unless adapter.is_a?(ProtocolAdapters::UniswapV3Adapter)
         return { error: "not a Uniswap V3 pool" }
@@ -28,6 +28,8 @@ class GetUniswapV3PoolTool < ApplicationTool
 
       {
         protocol: "Uniswap V3",
+        chain: chain_record.slug,
+        address: contract.address,
         pair: "#{data[:token0][:symbol]}/#{data[:token1][:symbol]}",
         fee: data[:fee_pct],
         price: {

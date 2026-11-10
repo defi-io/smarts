@@ -38,7 +38,8 @@ class QuoteUniswapV3SwapTool < ApplicationTool
         best: strip_raw(result.best),
         quotes: result.quotes.map { |q| strip_raw(q) },
         price_note: "Prices are token_out per 1 token_in. price_impact_pct is the shortfall vs spot including the LP fee; price_impact_ex_fee_pct removes the fee.",
-        block_number: result.block_number
+        block_number: result.block_number,
+        fetched_at: Time.current.utc.iso8601
       }
     rescue ChainReader::UniswapV3Quoter::Error => e
       { error: e.message }

@@ -20,8 +20,11 @@ class ReadContractStateToolTest < ActiveSupport::TestCase
   test "returns decoded values on successful call" do
     stub_success([ 42 ]) do
       result = @tool.payload(chain: "eth", address: @contract.address, function_name: "totalSupply")
-      assert result[:success]
+      assert_nil result[:error]
       assert_equal [ 42 ], result[:values]
+      assert_equal "eth", result[:chain]
+      assert_equal @contract.address, result[:address]
+      assert_equal "totalSupply", result[:function_name]
     end
   end
 
@@ -40,11 +43,11 @@ class ReadContractStateToolTest < ActiveSupport::TestCase
     assert_equal [ "0x0000000000000000000000000000000000000001" ], captured[:args]
   end
 
-  test "returns success=false with message when function is not on the ABI" do
+  test "returns an error when the function is not on the ABI" do
     raising = ->(**_) { raise ChainReader::SingleCaller::FunctionNotFound, "no function named 'bogus'" }
     stub_class_method(ChainReader::SingleCaller, :call, raising) do
       result = @tool.payload(chain: "eth", address: @contract.address, function_name: "bogus")
-      refute result[:success]
+      refute result.key?(:success), "failure is signalled by :error alone"
       assert_match(/bogus/, result[:error])
     end
   end
@@ -56,9 +59,9 @@ class ReadContractStateToolTest < ActiveSupport::TestCase
     )
     stub_class_method(ChainReader::SingleCaller, :call, ->(**_) { typed }) do
       result = @tool.payload(chain: "eth", address: @contract.address, function_name: "totalSupply")
-      assert result[:success]
       assert_equal 24_500_000, result[:block_number],
                    "AI agents need a block anchor to verify the read against on-chain state"
+      assert_equal typed.fetched_at.utc.iso8601, result[:fetched_at]
     end
   end
 
@@ -74,11 +77,11 @@ class ReadContractStateToolTest < ActiveSupport::TestCase
     end
   end
 
-  test "returns success=false when RPC errors out inside SingleCaller" do
+  test "returns an error when RPC errors out inside SingleCaller" do
     failed = ChainReader::SingleCaller::Result.new(success: false, error: "execution reverted")
     stub_class_method(ChainReader::SingleCaller, :call, ->(**_) { failed }) do
       result = @tool.payload(chain: "eth", address: @contract.address, function_name: "totalSupply")
-      refute result[:success]
+      refute result.key?(:success), "failure is signalled by :error alone"
       assert_equal "execution reverted", result[:error]
     end
   end
@@ -87,7 +90,7 @@ class ReadContractStateToolTest < ActiveSupport::TestCase
     @contract.update!(address: "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984") # matches uni-eth
     stub_success([ 1_000_000 ]) do
       result = @tool.payload(slug: "uni-eth", function_name: "totalSupply")
-      assert result[:success]
+      assert_equal "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984", result[:address]
       assert_equal [ 1_000_000 ], result[:values]
     end
   end

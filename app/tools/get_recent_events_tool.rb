@@ -34,11 +34,13 @@ class GetRecentEventsTool < ApplicationTool
       return { error: result.error } unless result.success?
 
       {
-        contract: result.contract,
         chain: result.chain,
+        address: result.contract,
         event_filter: result.event_filter,
         count: result.count,
-        events: result.events.map(&:to_h)
+        events: result.events.map(&:to_h),
+        block_number: result.latest_block,
+        fetched_at: Time.current.utc.iso8601
       }
     end
   end

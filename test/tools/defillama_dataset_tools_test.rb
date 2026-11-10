@@ -26,7 +26,15 @@ class DefillamaDatasetToolsTest < ActiveSupport::TestCase
     { pool: "e", project: "tiny",          chain: "arbitrum", symbol: "USDC",      tvl_usd: 50_000,      apy: 90.0, stablecoin: true }
   ].freeze
 
+  FETCHED_AT = Time.utc(2026, 11, 10, 2, 50, 0)
+
   def with_datasets(stables: STABLES, protocols: PROTOCOLS, pools: POOLS, &block)
+    stub_class_method(DefiLlamaDatasets, :fetched_at, ->(_name) { FETCHED_AT }) do
+      with_dataset_rows(stables, protocols, pools, &block)
+    end
+  end
+
+  def with_dataset_rows(stables, protocols, pools, &block)
     stub_class_method(DefiLlamaDatasets, :stablecoins, -> { stables }) do
       stub_class_method(DefiLlamaDatasets, :protocols, -> { protocols }) do
         stub_class_method(DefiLlamaDatasets, :yield_pools, -> { pools }, &block)
@@ -48,6 +56,7 @@ class DefillamaDatasetToolsTest < ActiveSupport::TestCase
       assert_equal({ chain: "eth", circulating: 42_000.0 }, r[:top_chains].first)
       assert_equal({ chain: "base", circulating: 4_200.0, share_pct: 6.0 }, r[:chain])
       assert_equal [ "Bridged USDC (fake)" ], r[:other_matches].map { |m| m[:name] }
+      assert_equal "2026-11-10T02:50:00Z", r[:fetched_at], "datasets can be up to 10 min old"
     end
   end
 
@@ -72,6 +81,7 @@ class DefillamaDatasetToolsTest < ActiveSupport::TestCase
       assert_equal 11_000.0, by_slug[:borrowed_usd]
       assert_equal(-1.272, by_slug[:change_1d_pct])
       assert_equal [ { chain: "eth", tvl_usd: 12_000.0 }, { chain: "base", tvl_usd: 500.0 } ], by_slug[:top_chains]
+      assert_equal "2026-11-10T02:50:00Z", by_slug[:fetched_at]
 
       assert_equal "aave-v3", GetProtocolTvlTool.payload(protocol: "Aave V3")[:slug]
     end
@@ -93,6 +103,7 @@ class DefillamaDatasetToolsTest < ActiveSupport::TestCase
       assert_equal %w[a b c], r[:pools].map { |p| p[:pool] }, "sorted by TVL; the $50k pool is below the floor"
       assert_equal 3, r[:match_count]
       assert_equal "tvl", r[:filters][:sort]
+      assert_equal "2026-11-10T02:50:00Z", r[:fetched_at]
     end
   end
 

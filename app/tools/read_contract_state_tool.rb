@@ -20,7 +20,7 @@ class ReadContractStateTool < ApplicationTool
       resolved = resolve_contract(chain: chain, address: address, slug: slug, require_full: true)
       return resolved if resolved.is_a?(Hash)
 
-      _chain_record, contract = resolved
+      chain_record, contract = resolved
 
       result = ChainReader::SingleCaller.call(
         contract: contract,
@@ -28,13 +28,18 @@ class ReadContractStateTool < ApplicationTool
         args: Array(args)
       )
 
-      if result.success
-        { success: true, values: result.values, block_number: result.block_number }
-      else
-        { success: false, error: result.error }
-      end
+      return { error: result.error } unless result.success
+
+      {
+        chain: chain_record.slug,
+        address: contract.address,
+        function_name: function_name,
+        values: result.values,
+        block_number: result.block_number,
+        fetched_at: result.fetched_at&.utc&.iso8601
+      }
     rescue ChainReader::SingleCaller::FunctionNotFound => e
-      { success: false, error: e.message }
+      { error: e.message }
     end
   end
 end

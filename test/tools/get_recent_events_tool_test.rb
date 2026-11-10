@@ -193,12 +193,15 @@ class GetRecentEventsToolTest < ActiveSupport::TestCase
   # Schema stability for AI consumers
   # ──────────────────────────────────────────────
 
-  test "exposes contract, chain, and event_filter for AI consumers" do
+  test "exposes address, chain, event_filter and freshness for AI consumers" do
     stub_logs([])
     result = with_eth_block_number { @tool.payload(chain: "eth", address: @contract.address) }
 
-    assert_equal @contract.address, result[:contract]
+    assert_equal @contract.address, result[:address]
+    refute result.key?(:contract), "contract was renamed to address to match the other tools"
     assert_equal "eth",             result[:chain]
+    assert result[:block_number], "block anchor of the scan"
+    assert result[:fetched_at]
     assert result.key?(:event_filter), "event_filter key must always be present (nil when no filter)"
     assert_nil result[:event_filter]
   end
@@ -295,7 +298,7 @@ class GetRecentEventsToolTest < ActiveSupport::TestCase
 
     result = with_eth_block_number { @tool.payload(slug: "uni-eth") }
     assert_equal 0, result[:count]
-    assert_equal "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984", result[:contract]
+    assert_equal "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984", result[:address]
   end
 
   private

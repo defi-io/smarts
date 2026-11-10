@@ -34,7 +34,8 @@ class GetAdminRiskToolTest < ActiveSupport::TestCase
     stub_class_method(AdminRisk::Profiler, :call, ->(**_) { profile }) do
       result = @tool.payload(chain: "eth", address: contract.address)
 
-      assert_equal contract.address, result[:contract]
+      assert_equal contract.address, result[:address]
+      refute result.key?(:error), "no error: nil on success"
       assert_equal "eth", result[:chain]
       assert_equal ContractSlugResolver.for(contract.chain.slug, contract.address), result[:slug]
       assert_equal profile.summary, result[:summary]
@@ -72,7 +73,7 @@ class GetAdminRiskToolTest < ActiveSupport::TestCase
     stub_class_method(AdminRisk::Profiler, :call, ->(**_) { profile }) do
       result = @tool.payload(slug: "usdc-eth")
       assert_equal "eth", result[:chain]
-      assert_equal contract.address, result[:contract]
+      assert_equal contract.address, result[:address]
     end
   end
 
