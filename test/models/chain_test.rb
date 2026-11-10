@@ -102,8 +102,10 @@ class ChainTest < ActiveSupport::TestCase
     assert_instance_of BlockscoutClient, chains(:robinhood).explorer_client
   end
 
-  test "explorer_client returns SourcifyClient for Arc" do
-    assert_instance_of SourcifyClient, chains(:arc).explorer_client
+  test "explorer_client for Arc asks Sourcify first, then ArcScan via Etherscan V2" do
+    client = chains(:arc).explorer_client
+    assert_instance_of FallbackExplorerClient, client
+    assert_equal [ SourcifyClient, EtherscanClient ], client.clients.map(&:class)
   end
 
   # Arc pays gas in native USDC rather than a volatile L1 coin, so the balance

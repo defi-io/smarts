@@ -87,7 +87,7 @@ class Chains::SeederTest < ActiveSupport::TestCase
     assert_equal "https://sourcify.dev/server", arc.explorer_api_url
     assert_equal "https://arc.etherscan.io", arc.explorer_url
     assert_equal "https://arc.etherscan.io/verifyContract", arc.verify_url
-    assert_instance_of SourcifyClient, arc.explorer_client
+    assert_equal [ SourcifyClient, EtherscanClient ], arc.explorer_client.clients.map(&:class)
   end
 
   test "catalog chains assemble contracts from persisted catalog rows" do
@@ -103,6 +103,26 @@ class Chains::SeederTest < ActiveSupport::TestCase
 
     assert_includes contracts.map(&:name), "DB Only Contract"
     assert_equal Contract.for_catalog.where(chain: eth).count, contracts.length
+  end
+
+
+  test "drops catalog listing and slug for contracts removed from the seed file" do
+    arc = Chain.find_by(slug: "arc") || chains(:arc)
+    stale = Contract.create!(chain: arc, address: "0xbef5f6d51cb62b58e6a8f77868681825c6fe21c1",
+                             name: "FiatTokenProxy", abi: [ { "type" => "function", "name" => "name" } ],
+                             catalog_name: "EURC", catalog_slug: "eurc-arc", catalog_kind: "Token", catalog_order: 1)
+
+    Chains::Seeder.call
+
+    stale.reload
+    assert_nil stale.catalog_name
+    assert_nil stale.catalog_slug
+    assert_nil stale.catalog_kind
+    assert_nil stale.catalog_order
+    assert_equal "FiatTokenProxy", stale.name, "the contract row itself is kept"
+    assert_nil ContractSlugResolver.resolve("eurc-arc")
+    assert_equal "usdc-arc", Contract.find_by!(chain: arc, address: "0x3600000000000000000000000000000000000000").catalog_slug,
+                 "seeded entries are untouched"
   end
 
   private

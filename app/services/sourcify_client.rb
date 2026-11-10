@@ -1,8 +1,8 @@
 # Sourcify's verification API, used when the available Etherscan or Blockscout
-# index is not complete enough for our contracts. Arc is the first: ArcScan and
-# Etherscan V2 support chain 5042, but their launch-day source index cannot yet
-# serve any of our six curated contracts end-to-end. Sourcify remains the
-# source/ABI backend while ArcScan is used for user-facing explorer links.
+# index is not complete enough for our contracts. Arc is the first: Sourcify and
+# ArcScan (Etherscan V2) each verify a different subset of our contracts, so
+# Chain#explorer_client wraps this client and Etherscan V2 in a
+# FallbackExplorerClient, Sourcify first.
 #
 # Unlike the other two clients this is not an Etherscan-shaped API, so it does
 # not go through `ExplorerClient#request`:

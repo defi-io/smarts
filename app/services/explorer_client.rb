@@ -1,9 +1,9 @@
 # Shared behaviour for block-explorer source/ABI clients.
 #
-# Three implementations exist: EtherscanClient (Etherscan V2), BlockscoutClient
+# Implementations: EtherscanClient (Etherscan V2), BlockscoutClient
 # (currently used for Robinhood Chain while Etherscan's new index has
-# incomplete proxy coverage), and SourcifyClient (used for Arc, which no public
-# Etherscan or Blockscout instance indexes).
+# incomplete proxy coverage), SourcifyClient, and FallbackExplorerClient (Arc:
+# Sourcify first, then ArcScan through Etherscan V2).
 # Callers reach the right one through `Chain#explorer_client` and rescue the
 # error classes defined here, so adding an explorer never touches call sites.
 class ExplorerClient
@@ -49,8 +49,12 @@ class ExplorerClient
     end
   end
 
-  def initialize(chain)
+  # `api_url` overrides the chain's seeded `explorer_api_url`, so a chain can
+  # be served by a second backend (see FallbackExplorerClient) without
+  # touching its seed.
+  def initialize(chain, api_url: nil)
     @chain = chain
+    @api_url = api_url || chain.explorer_api_url
   end
 
   # Whether this explorer can serve logs/getLogs for the chain. Callers fall
@@ -62,7 +66,7 @@ class ExplorerClient
   private
 
   def connection
-    @connection ||= Faraday.new(url: @chain.explorer_api_url, headers: { "User-Agent" => USER_AGENT }) do |f|
+    @connection ||= Faraday.new(url: @api_url, headers: { "User-Agent" => USER_AGENT }) do |f|
       f.request :retry, max: 2, interval: 0.5, backoff_factor: 2
       f.options.timeout = TIMEOUT
       f.options.open_timeout = TIMEOUT

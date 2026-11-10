@@ -65,7 +65,11 @@ class Chain < ApplicationRecord
     if url.include?("blockscout") || BLOCKSCOUT_VANITY_HOSTS.any? { |host| url.include?(host) }
       BlockscoutClient.new(self)
     elsif url.include?("sourcify")
-      SourcifyClient.new(self)
+      # Sourcify and the chain's Etherscan V2 index each verify a different
+      # subset of contracts (Arc, 2026-11: USDC and Multicall3 only on ArcScan,
+      # USYC and Permit2 only on Sourcify), so ask both.
+      FallbackExplorerClient.new(self, SourcifyClient.new(self),
+                                 EtherscanClient.new(self, api_url: EtherscanClient::V2_API_URL))
     else
       EtherscanClient.new(self)
     end

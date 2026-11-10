@@ -1,5 +1,6 @@
 class EtherscanClient < ExplorerClient
   EXPLORER_NAME = "Etherscan".freeze
+  V2_API_URL = "https://api.etherscan.io/v2/api".freeze
 
   # Etherscan free tier caps at 5 req/sec; some accounts see 3/sec. Be
   # conservative — sleep between calls so log-scan fan-out
@@ -118,6 +119,6 @@ class EtherscanClient < ExplorerClient
   end
 
   def etherscan_v2?
-    @chain.explorer_api_url.to_s.include?("/v2/api")
+    @api_url.to_s.include?("/v2/api")
   end
 end
