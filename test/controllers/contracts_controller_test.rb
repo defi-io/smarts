@@ -511,6 +511,21 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "islands return a 404 frame instead of 500 for an unverified contract" do
+    stub_request(:get, /api\.etherscan\.io.*getsourcecode/).to_return(
+      status: 200,
+      body: { "status" => "1", "message" => "OK", "result" => [ { "ABI" => "Contract source code not verified" } ] }.to_json,
+      headers: { "Content-Type" => "application/json" }
+    )
+
+    %w[live activity source].each do |island|
+      get "/eth/0x0000000000000000000000000000000000000001/#{island}"
+      assert_response :not_found, "#{island} island"
+      assert_match %(<turbo-frame id="contract_#{island}">), response.body
+      assert_match I18n.t("contracts.not_verified.generic_heading"), response.body
+    end
+  end
+
   test "not_verified page renders wallet-address copy when inspection reports an EOA" do
     stub_request(:get, /api\.etherscan\.io.*getsourcecode/).to_return(
       status: 200,

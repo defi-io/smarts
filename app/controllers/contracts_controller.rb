@@ -79,6 +79,8 @@ class ContractsController < ApplicationController
     @classification = classify(@contract)
     expires_in 30.seconds, public: true, stale_while_revalidate: 60.seconds
     render layout: false
+  rescue ExplorerClient::NotVerifiedError
+    render_unverified_island
   end
 
   def activity
@@ -90,12 +92,16 @@ class ContractsController < ApplicationController
     @live_values = load_live_values(@contract)
     expires_in 30.seconds, public: true, stale_while_revalidate: 60.seconds
     render layout: false
+  rescue ExplorerClient::NotVerifiedError
+    render_unverified_island
   end
 
   def source
     load_island_contract
     expires_in 1.day, public: true
     render layout: false
+  rescue ExplorerClient::NotVerifiedError
+    render_unverified_island
   end
 
   private
@@ -251,6 +257,18 @@ class ContractsController < ApplicationController
 
       View raw on-chain state: <https://smarts.md/#{chain.slug}/#{address}>
     MD
+  end
+
+  # Island counterpart of show's not_verified page: the explorer no longer
+  # returns verified source, so answer 404 inside the frame instead of a 500.
+  def render_unverified_island
+    render plain: <<~HTML, content_type: "text/html", status: :not_found
+      <turbo-frame id="contract_#{action_name}">
+        <div class="alert alert-warning">
+          #{ERB::Util.h(t('contracts.not_verified.generic_heading'))}
+        </div>
+      </turbo-frame>
+    HTML
   end
 
   # Renders a friendly notice in a Turbo Frame for docs_only chains. Used by
