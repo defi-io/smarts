@@ -21,6 +21,9 @@ class UniswapV3PoolFlowTest < ActionDispatch::IntegrationTest
   end
 
   test "renders full V3 pool panel end-to-end for canonical pool address" do
+    # canned_prices stamps "now" in whole seconds; freezing time (usec = 0)
+    # keeps the freshness label at "just now" however slow CI renders.
+    freeze_time
     stub_etherscan_empty_pool
 
     factory_hex = "0x" + Eth::Abi.encode([ "address" ], [ V3_FACTORY ]).unpack1("H*")
