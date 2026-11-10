@@ -1565,4 +1565,56 @@ class ContractsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match "docs-only chain", response.body
   end
+
+  # ---------- Aave V3 Pool adapter ----------
+
+  AAVE_PANEL = {
+    reserves: [
+      { symbol: "USDC", address: "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913", supplied_usd: 196_094_978.0, borrowed_usd: 178_000_000.0,
+        supply_apy: 0.0473, variable_borrow_apy: 0.0581, utilization: 0.909, ltv: 0.0, liquidation_threshold: 0.78,
+        frozen: false, paused: false, borrowing_enabled: true },
+      { symbol: "cbETH", address: "0x2ae3f1ec7f1f5012cfeab0185bfc7aa3cf0dec22", supplied_usd: 137_231_122.0, borrowed_usd: 100_000.0,
+        supply_apy: 0.0, variable_borrow_apy: 0.0001, utilization: 0.001, ltv: 0.75, liquidation_threshold: 0.79,
+        frozen: true, paused: false, borrowing_enabled: false }
+    ],
+    reserve_count: 2, total_supplied_usd: 869_005_128.0, total_borrowed_usd: 358_989_419.0,
+    block_number: 55_413_849, fetched_at: Time.current, price_observed_at: Time.current
+  }.freeze
+
+  def with_aave_pool_contract
+    Contract.create!(chain: chains(:base), address: "0xa238dd80c259a72e81d7e4664a9801593f98d1c5",
+                     name: "InitializableImmutableAdminUpgradeabilityProxy", verified_at: 1.hour.ago,
+                     abi: [ { "type" => "function", "name" => "getReservesList", "inputs" => [], "outputs" => [ { "name" => "", "type" => "address[]" } ], "stateMutability" => "view" } ])
+    adapter_class = Class.new(ProtocolAdapters::AaveV3PoolAdapter) { define_method(:panel_data) { AAVE_PANEL } }
+    resolve = ->(contract) { ProtocolAdapters::AaveV3PoolAdapter.matches?(contract) ? adapter_class.new(contract) : nil }
+
+    stub_class_method(ProtocolAdapters::Base, :resolve, resolve) do
+      stub_class_method(ChainReader::ViewCaller, :call, ->(_c) { {} }) { yield }
+    end
+  end
+
+  test "live island renders the Aave V3 market panel for the Base Pool" do
+    with_aave_pool_contract { get "/aavev3-pool-base/live" }
+
+    assert_response :success
+    assert_match "Aave V3 Pool", response.body
+    assert_match "$869M", response.body, "total supplied"
+    assert_match "$359M", response.body, "total borrowed"
+    assert_match "4.73%", response.body, "USDC supply APY"
+    assert_match "90.90%", response.body, "USDC utilization"
+    assert_match I18n.t("adapters.aave_v3.frozen"), response.body
+    assert_match I18n.t("adapters.aave_v3.no_borrow"), response.body
+    assert_match "#55,413,849", response.body, "block-anchored freshness"
+  end
+
+  test "Aave V3 Pool .md lists every reserve in a table" do
+    with_aave_pool_contract { get "/aavev3-pool-base.md" }
+
+    assert_response :success
+    assert_match "## Market state (Aave V3)", response.body
+    assert_match "- **Total supplied:** $869M", response.body
+    assert_match "| USDC | $196M | $178M | 4.73% | 5.81% | 90.90% | 0.00% | 78.00% | active |", response.body
+    assert_match "| cbETH |", response.body
+    assert_match "frozen, no borrow", response.body
+  end
 end

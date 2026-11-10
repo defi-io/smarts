@@ -59,6 +59,7 @@ class MarketingController < ApplicationController
     { name: "get_contract_info",    blurb: "Metadata about a verified contract: name, classification, adapter, function counts." },
     { name: "get_contract_source",  blurb: "Fetch the verified Solidity source: file index, single-file content, or substring grep across files." },
     { name: "get_admin_risk",       blurb: "Current admin / risk profile for a verified contract: detected controls, current values, and warnings." },
+    { name: "get_aave_v3_market",   blurb: "Live Aave V3 market: per-asset supply/borrow APY, supplied and borrowed in USD, utilization, LTV, caps, frozen/paused." },
     { name: "get_erc20_info",       blurb: "Live token state: formatted supply, price, market cap, issuer, admin controls (paused/owner/minter/…)." },
     { name: "get_polymarket_market", blurb: "Polymarket market state by slug or condition ID: outcomes, prices when present, resolution payouts, and CTF position IDs." },
     { name: "get_polymarket_position", blurb: "Wallet balances for explicit Polymarket markets by condition ID or slug, including redeemable resolved outcomes." },
@@ -75,6 +76,7 @@ class MarketingController < ApplicationController
   MCP_EXAMPLE_QUERIES = [
     { q: "Is USDC paused right now?",                           tool: "get_erc20_info" },
     { q: "What's the TVL of the Uniswap V3 USDC/WETH 0.05% pool?", tool: "get_uniswap_v3_pool" },
+    { q: "What's the USDC supply APY on Aave V3 Base right now?", tool: "get_aave_v3_market" },
     { q: "Who is 0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045?",  tool: "inspect_address" },
     { q: "Get the total supply of USDT on Arbitrum.",           tool: "get_erc20_info" },
     { q: "Who can blacklist my USDC balance?",                  tool: "get_erc20_info" },
@@ -165,7 +167,7 @@ class MarketingController < ApplicationController
       name_for_human: "Smarts — Smart Contract Docs",
       name_for_model: "smarts",
       description_for_human: "Live docs for every verified smart contract. Query on-chain state, token info, and admin risk across Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, and Arc.",
-      description_for_model: "Use the Smarts API to read live on-chain state for verified smart contracts on EVM chains (Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, Arc). You can look up ERC-20 token metadata and prices, Uniswap V3 pool state, admin risk profiles, Polymarket markets, contract source code, and call any view function. Use curated slugs (e.g. 'usdc-eth', 'uni-eth') or chain+address pairs.",
+      description_for_model: "Use the Smarts API to read live on-chain state for verified smart contracts on EVM chains (Ethereum, Base, Arbitrum, Optimism, BNB, Polygon, Robinhood Chain, Arc). You can look up ERC-20 token metadata and prices, Uniswap V3 pool state, Aave V3 lending markets, admin risk profiles, Polymarket markets, contract source code, and call any view function. Use curated slugs (e.g. 'usdc-eth', 'uni-eth') or chain+address pairs.",
       auth: { type: "none" },
       api: {
         type: "openapi",

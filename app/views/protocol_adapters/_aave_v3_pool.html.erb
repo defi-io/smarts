@@ -1,0 +1,79 @@
+<% data = adapter.panel_data %>
+
+<% if data[:error] %>
+  <div class="alert alert-warning mb-6">
+    <%= t('adapters.aave_v3.error') %> <%= data[:error] %>
+  </div>
+<% else %>
+  <div class="card bg-gradient-to-br from-primary/10 to-secondary/10 border border-base-300 mb-6">
+    <div class="card-body">
+      <div class="flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <div class="text-xs opacity-60 font-mono mb-1"><%= adapter.protocol_name %></div>
+          <h2 class="text-3xl font-bold"><%= adapter.display_name %></h2>
+        </div>
+        <% if (tag = panel_freshness_tag(data)) %>
+          <div class="self-start"><%= tag %></div>
+        <% end %>
+      </div>
+
+      <div class="mt-6 flex flex-wrap gap-8">
+        <div>
+          <div class="text-xs opacity-60 mb-1"><%= t('adapters.aave_v3.total_supplied') %></div>
+          <div class="text-xl font-mono"><%= compact_usd(data[:total_supplied_usd]) %></div>
+        </div>
+        <div>
+          <div class="text-xs opacity-60 mb-1"><%= t('adapters.aave_v3.total_borrowed') %></div>
+          <div class="text-xl font-mono"><%= compact_usd(data[:total_borrowed_usd]) %></div>
+        </div>
+        <div>
+          <div class="text-xs opacity-60 mb-1"><%= t('adapters.aave_v3.reserves') %></div>
+          <div class="text-xl font-mono"><%= data[:reserve_count] %></div>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto mt-6">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th><%= t('adapters.aave_v3.th_asset') %></th>
+              <th class="text-right"><%= t('adapters.aave_v3.th_supplied') %></th>
+              <th class="text-right"><%= t('adapters.aave_v3.th_borrowed') %></th>
+              <th class="text-right"><%= t('adapters.aave_v3.th_supply_apy') %></th>
+              <th class="text-right"><%= t('adapters.aave_v3.th_borrow_apy') %></th>
+              <th class="text-right"><%= t('adapters.aave_v3.th_utilization') %></th>
+              <th class="text-right"><%= t('adapters.aave_v3.th_ltv') %></th>
+              <th class="text-right"><%= t('adapters.aave_v3.th_liq_threshold') %></th>
+            </tr>
+          </thead>
+          <tbody class="font-mono">
+            <% data[:reserves].each do |r| %>
+              <tr>
+                <td title="<%= r[:address] %>">
+                  <%= r[:symbol] %>
+                  <% if r[:paused] %><span class="badge badge-error badge-xs ml-1"><%= t('adapters.aave_v3.paused') %></span><% end %>
+                  <% if r[:frozen] %><span class="badge badge-warning badge-xs ml-1"><%= t('adapters.aave_v3.frozen') %></span><% end %>
+                  <% unless r[:borrowing_enabled] %><span class="badge badge-ghost badge-xs ml-1"><%= t('adapters.aave_v3.no_borrow') %></span><% end %>
+                </td>
+                <td class="text-right"><%= compact_usd(r[:supplied_usd]) %></td>
+                <td class="text-right"><%= compact_usd(r[:borrowed_usd]) %></td>
+                <td class="text-right"><%= rate_pct(r[:supply_apy]) %></td>
+                <td class="text-right"><%= rate_pct(r[:variable_borrow_apy]) %></td>
+                <td class="text-right"><%= rate_pct(r[:utilization]) %></td>
+                <td class="text-right"><%= rate_pct(r[:ltv]) %></td>
+                <td class="text-right"><%= rate_pct(r[:liquidation_threshold]) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="text-xs opacity-60 mt-3">
+        <%= t('adapters.aave_v3.usd_note') %>
+        <% if data[:price_observed_at] %>
+          · prices <%= freshness_phrase(data[:price_observed_at]) %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

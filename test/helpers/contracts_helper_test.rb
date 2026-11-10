@@ -518,4 +518,14 @@ class ContractsHelperTest < ActionView::TestCase
                  admin_risk_value({ type: "uint256", value: 1234567890123456789012345678901234567890 })
     assert_equal "", admin_risk_value({ type: "string", value: nil })
   end
+
+  test "compact_usd and rate_pct format market figures" do
+    assert_equal "$869M", compact_usd(869_005_128)
+    assert_equal "$21.9B", compact_usd(21_851_795_465)
+    assert_equal "$950", compact_usd(950)
+    assert_equal "—", compact_usd(nil)
+    assert_equal "4.73%", rate_pct(0.0473)
+    assert_equal "0.00%", rate_pct(0.0)
+    assert_equal "—", rate_pct(nil)
+  end
 end
