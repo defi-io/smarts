@@ -36,6 +36,12 @@ plugin :tmp_restart
 
 # Run the Solid Queue supervisor inside of Puma for single-server deployments.
 plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
+# Run the supervisor, dispatcher and worker as threads inside Puma instead of
+# three forked processes: each fork kept ~60 MB of private heap for a job load
+# of a few AI enrichments and recurring tasks. Jobs then share Puma's DB pool,
+# so DB_POOL must cover web threads + worker threads + dispatcher/heartbeat.
+# SOLID_QUEUE_MODE=fork switches back without a code change.
+solid_queue_mode ENV.fetch("SOLID_QUEUE_MODE", "async").to_sym if ENV["SOLID_QUEUE_IN_PUMA"]
 
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.
