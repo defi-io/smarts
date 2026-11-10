@@ -336,7 +336,7 @@ smarts/
 │   │   └── protocol_adapters/
 │   │       ├── base_adapter.rb              # 适配器基类
 │   │       ├── uniswap_v3_adapter.rb        # Month 1-2
-│   │       ├── aave_v3_adapter.rb           # Month 3+
+│   │       ├── aave_v3_pool_adapter.rb      # Aave V3 Pool：直接读 Pool（getReservesList / getReserveData），按地址白名单匹配
 │   │       └── generic_erc20_adapter.rb     # fallback
 │   │
 │   ├── jobs/
@@ -348,6 +348,7 @@ smarts/
 │   │   ├── application_tool.rb              # 基类（slug/chain+address 解析、Hash → MCP::Tool::Response）
 │   │   ├── get_contract_info_tool.rb        # 合约元数据
 │   │   ├── get_contract_source_tool.rb      # 源码索引/取文件/grep
+│   │   ├── get_aave_v3_market_tool.rb       # Aave V3 市场（各资产 APY / 存借量 / LTV / 上限）
 │   │   ├── get_erc20_info_tool.rb           # ERC-20 实时元数据
 │   │   ├── get_recent_events_tool.rb        # 合约近期事件（按 ABI 解码）
 │   │   ├── get_uniswap_v3_pool_tool.rb      # Uniswap V3 池实时状态

@@ -46,4 +46,15 @@ class Api::V1::ToolsControllerTest < ActionDispatch::IntegrationTest
       assert_response :success
     end
   end
+
+  test "get_aave_v3_market is exposed over REST and forwards chain + asset" do
+    seen = nil
+    stub = ->(**kwargs) { seen = kwargs; { protocol: "Aave V3", chain: kwargs[:chain] } }
+    stub_class_method(GetAaveV3MarketTool, :payload, stub) do
+      get api_v1_tool_path(tool_name: "get_aave_v3_market", chain: "base", asset: "USDC")
+      assert_response :success
+      assert_equal "Aave V3", response.parsed_body["protocol"]
+    end
+    assert_equal({ chain: "base", asset: "USDC" }, seen)
+  end
 end

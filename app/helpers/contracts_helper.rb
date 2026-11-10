@@ -156,6 +156,21 @@ module ContractsHelper
     "#{time_ago_short(time)} ago"
   end
 
+  # "$869M" / "$21.9B" for market-size figures; "—" when the price is missing.
+  def compact_usd(value)
+    return "—" if value.nil?
+
+    "$" + number_to_human(value, precision: 3, significant: true, format: "%n%u",
+                          units: { thousand: "K", million: "M", billion: "B", trillion: "T" })
+  end
+
+  # 0.0473 → "4.73%"; "—" for nil.
+  def rate_pct(value)
+    return "—" if value.nil?
+
+    format("%.2f%%", value * 100)
+  end
+
   # Renders a Uniswap V3 raw `liquidity()` value (a uint128 sqrt-formula
   # intermediate, not USD) as e.g. "3.27 × 10¹⁸" so it stops looking like
   # "32 quintillion dollars" to the unsuspecting reader.

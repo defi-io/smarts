@@ -19,6 +19,7 @@ module Api
         "get_contract_info"        => GetContractInfoTool,
         "get_contract_source"      => GetContractSourceTool,
         "get_admin_risk"           => GetAdminRiskTool,
+        "get_aave_v3_market"       => GetAaveV3MarketTool,
         "get_erc20_info"           => GetErc20InfoTool,
         "get_polymarket_market"    => GetPolymarketMarketTool,
         "get_polymarket_position"  => GetPolymarketPositionTool,

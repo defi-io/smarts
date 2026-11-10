@@ -592,4 +592,14 @@ class MarketingControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match "recent activity, and admin controls", response.body
   end
+
+  test "Aave V3 market tool is advertised in discovery and the openapi spec" do
+    get "/.well-known/ai-plugin.json"
+    assert_match "Aave V3 lending markets", JSON.parse(response.body)["description_for_model"]
+
+    get "/api/openapi.json"
+    assert JSON.parse(response.body)["paths"].keys.any? { |path| path.include?("get_aave_v3_market") }
+
+    assert_includes MarketingController::MCP_EXAMPLE_QUERIES.map { |q| q[:tool] }, "get_aave_v3_market"
+  end
 end

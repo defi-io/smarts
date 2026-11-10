@@ -75,6 +75,11 @@ class McpBearerAuthFlowTest < ActionDispatch::IntegrationTest
     assert_equal "Forbidden: Invalid Host header", body.dig("error", "message")
   end
 
+  test "tools/list advertises get_aave_v3_market" do
+    body = post_mcp(method: "tools/list", params: {}, bearer: nil)
+    assert_includes body.dig("result", "tools").map { |t| t["name"] }, "get_aave_v3_market"
+  end
+
   private
 
   # POSTs a single JSON-RPC message to the MCP endpoint and parses the

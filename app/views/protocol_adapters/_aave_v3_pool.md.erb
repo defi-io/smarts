@@ -1,0 +1,24 @@
+<% data = adapter.panel_data %>
+<% if data[:error] %>
+## Market state
+
+_Could not read market state: <%= data[:error] %>_
+<% else %>
+## Market state (<%= adapter.protocol_name %>)
+
+<% if data[:block_number] %>
+_Read at chain block #<%= data[:block_number] %><% if data[:fetched_at] %>, <%= freshness_phrase(data[:fetched_at]) %><% end %>._
+
+<% end %>
+- **Total supplied:** <%= compact_usd(data[:total_supplied_usd]) %>
+- **Total borrowed:** <%= compact_usd(data[:total_borrowed_usd]) %>
+- **Reserves:** <%= data[:reserve_count] %>
+
+| Asset | Supplied | Borrowed | Supply APY | Borrow APY | Utilization | LTV | Liq. threshold | Status |
+|---|---|---|---|---|---|---|---|---|
+<% data[:reserves].each do |r| %>
+| <%= r[:symbol] %> | <%= compact_usd(r[:supplied_usd]) %> | <%= compact_usd(r[:borrowed_usd]) %> | <%= rate_pct(r[:supply_apy]) %> | <%= rate_pct(r[:variable_borrow_apy]) %> | <%= rate_pct(r[:utilization]) %> | <%= rate_pct(r[:ltv]) %> | <%= rate_pct(r[:liquidation_threshold]) %> | <%= [ ("paused" if r[:paused]), ("frozen" if r[:frozen]), ("no borrow" unless r[:borrowing_enabled]) ].compact.join(", ").presence || "active" %> |
+<% end %>
+
+_USD values via DefiLlama prices. APYs are variable rates read from the Pool at this block._
+<% end %>
