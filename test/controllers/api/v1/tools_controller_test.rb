@@ -71,4 +71,19 @@ class Api::V1::ToolsControllerTest < ActionDispatch::IntegrationTest
       assert Api::V1::ToolsController::TOOL_MAP.key?(name), name
     end
   end
+
+  test "tool-level errors answer 422 and are never publicly cached" do
+    stub_class_method(GetErc20InfoTool, :payload, ->(**_) { { error: "unknown slug: nope-eth" } }) do
+      get api_v1_tool_path(tool_name: "get_erc20_info", slug: "nope-eth")
+    end
+    assert_response :unprocessable_entity
+    assert_equal "unknown slug: nope-eth", response.parsed_body["error"]
+    assert_equal "no-store", response.headers["Cache-Control"]
+
+    stub_class_method(GetErc20InfoTool, :payload, ->(**_) { { symbol: "USDC" } }) do
+      get api_v1_tool_path(tool_name: "get_erc20_info", slug: "usdc-eth")
+    end
+    assert_response :success
+    assert_match "public", response.headers["Cache-Control"]
+  end
 end

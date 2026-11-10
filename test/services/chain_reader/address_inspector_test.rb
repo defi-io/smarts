@@ -61,6 +61,22 @@ class ChainReader::AddressInspectorTest < ActiveSupport::TestCase
     end
   end
 
+  test "stamps fetched_at and caches under the v2 key (Result gained a member)" do
+    client = FakeClient.new(code: "0x", balance: 0, tx_count: 0)
+    original = Rails.cache
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+
+    freeze_time do
+      with_fake_client(client) do
+        r = ChainReader::AddressInspector.call(chain: @chain, address: ADDR)
+        assert_equal Time.current, r.fetched_at
+      end
+      assert Rails.cache.exist?("address_inspector:v2:#{@chain.slug}:#{ADDR.downcase}")
+    end
+  ensure
+    Rails.cache = original
+  end
+
   test "EIP-7702 delegated EOA (code starts with 0xef0100) classified as EOA, not contract" do
     client = FakeClient.new(
       code: "0xef01005a7fc11397e9a8ad41bf10bf13f22b0a63f96f6d",

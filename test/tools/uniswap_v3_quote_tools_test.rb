@@ -25,6 +25,7 @@ class UniswapV3QuoteToolsTest < ActiveSupport::TestCase
       assert_equal 2112.47, r[:pools].first["price (1 WETH in USDC)"]
       refute r[:pools].first.key?(:price_b_per_a)
       assert_match "not USD", r[:liquidity_note]
+      assert r[:fetched_at].present?
     end
     assert_equal [ "base", WETH, USDC ], seen
   end
@@ -43,6 +44,7 @@ class UniswapV3QuoteToolsTest < ActiveSupport::TestCase
       assert_equal 0.0583, r[:best][:price_impact_pct]
       refute r[:best].key?(:amount_out_raw)
       assert_equal 2, r[:block_number]
+      assert r[:fetched_at].present?
     end
     assert_equal({ chain: "base", token_in: WETH, token_out: USDC, amount_in: "1", fee: 500 }, seen)
   end

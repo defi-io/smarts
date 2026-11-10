@@ -6,7 +6,7 @@ module ChainReader
   class AddressInspector
     CACHE_TTL = 5.minutes
 
-    Result = Struct.new(:is_contract, :balance_wei, :tx_count, :ens_name, keyword_init: true) do
+    Result = Struct.new(:is_contract, :balance_wei, :tx_count, :ens_name, :fetched_at, keyword_init: true) do
       # `is_contract` is deliberately three-valued: true / false / nil, where
       # nil means the RPC call failed and we don't know. Compare explicitly
       # rather than negating — `!nil` is true, which would turn "we couldn't
@@ -50,7 +50,8 @@ module ChainReader
         is_contract: code_has_bytecode?(code),
         balance_wei: balance,
         tx_count: tx_count,
-        ens_name: ens
+        ens_name: ens,
+        fetched_at: Time.current
       )
     end
 
@@ -110,7 +111,8 @@ module ChainReader
     end
 
     def cache_key
-      "address_inspector:#{@chain.slug}:#{@address}"
+      # v2: Result gained fetched_at; v1 entries would not unmarshal.
+      "address_inspector:v2:#{@chain.slug}:#{@address}"
     end
   end
 end

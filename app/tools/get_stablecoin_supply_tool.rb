@@ -37,7 +37,8 @@ class GetStablecoinSupplyTool < ApplicationTool
         change_1d_pct: pct_change(main[:circulating], main[:circulating_prev_day]),
         change_7d_pct: pct_change(main[:circulating], main[:circulating_prev_week]),
         chain_count: main[:chains].size,
-        top_chains: main[:chains].first(CHAIN_LIMIT).map { |c, amount| { chain: c, circulating: amount } }
+        top_chains: main[:chains].first(CHAIN_LIMIT).map { |c, amount| { chain: c, circulating: amount } },
+        fetched_at: DefiLlamaDatasets.fetched_at("stablecoins")&.utc&.iso8601
       }
 
       if chain.present?

@@ -53,6 +53,13 @@ class DefiLlamaDatasets
       fetch_dataset("pools") { slim_pools(get_json(POOLS_URL, "data")) }
     end
 
+    # When the cached copy of a dataset ("stablecoins", "protocols",
+    # "pools") was downloaded, or nil if it isn't cached. Tools report it as
+    # fetched_at, since the data can be up to TTL old.
+    def fetched_at(name)
+      store.read(dataset_key(name))&.dig(:fetched_at)
+    end
+
     # DefiLlama chain name → our slug, or the DefiLlama name when we don't
     # support that chain.
     def our_chain(llama_name, names: CHAIN_NAMES)
@@ -61,8 +68,15 @@ class DefiLlamaDatasets
 
     private
 
-    def fetch_dataset(name, &block)
-      store.fetch("defillama:dataset:#{name}", expires_in: TTL, race_condition_ttl: 30.seconds, &block)
+    def fetch_dataset(name)
+      entry = store.fetch(dataset_key(name), expires_in: TTL, race_condition_ttl: 30.seconds) do
+        { fetched_at: Time.current, rows: yield }
+      end
+      entry[:rows]
+    end
+
+    def dataset_key(name)
+      "defillama:dataset:#{name}"
     end
 
     def get_json(url, key = nil)

@@ -62,4 +62,13 @@ class ApplicationToolTest < ActiveSupport::TestCase
     assert_equal "usdc-eth is on eth, not base", ApplicationTool.resolve_token("base", "usdc-eth").last[:error]
     assert_match(/0x address or a curated slug/, ApplicationTool.resolve_token("eth", "USDC").last[:error])
   end
+
+  test "text_response flags error payloads as MCP isError" do
+    failed = ApplicationTool.text_response({ error: "unknown slug: nope-eth" }).to_h
+    ok = ApplicationTool.text_response({ chain: "eth", error: nil }).to_h
+
+    assert_equal true, failed[:isError]
+    assert_equal false, ok[:isError]
+    assert_equal({ "error" => "unknown slug: nope-eth" }, JSON.parse(failed[:content].first[:text]))
+  end
 end

@@ -21,8 +21,8 @@ class GetAdminRiskTool < ApplicationTool
       profile = AdminRisk::Profiler.call(contract: contract)
 
       {
-        contract: profile.contract,
         chain: profile.chain,
+        address: profile.contract,
         slug: ContractSlugResolver.for(profile.chain, profile.contract),
         summary: profile.summary,
         risk_flags: profile.risk_flags,
@@ -32,7 +32,7 @@ class GetAdminRiskTool < ApplicationTool
         block_number: profile.block_number,
         fetched_at: profile.fetched_at&.utc&.iso8601,
         error: profile.error
-      }
+      }.compact
     end
   end
 end

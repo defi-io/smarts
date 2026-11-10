@@ -12,7 +12,8 @@ class InspectAddressToolTest < ActiveSupport::TestCase
 
   test "classifies an EOA with balance + tx count + ENS" do
     fake_result = ChainReader::AddressInspector::Result.new(
-      is_contract: false, balance_wei: 1_800_000_000_000_000_000, tx_count: 42, ens_name: "vitalik.eth"
+      is_contract: false, balance_wei: 1_800_000_000_000_000_000, tx_count: 42, ens_name: "vitalik.eth",
+      fetched_at: Time.utc(2026, 11, 10, 3, 0, 0)
     )
     stub_class_method(ChainReader::AddressInspector, :call, ->(**_) { fake_result }) do
       result = @tool.payload(chain: "eth", address: "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045")
@@ -24,6 +25,7 @@ class InspectAddressToolTest < ActiveSupport::TestCase
       assert_equal "ETH", result[:balance][:symbol]
       assert_equal 42, result[:tx_count_sent]
       assert_equal "vitalik.eth", result[:ens_name]
+      assert_equal "2026-11-10T03:00:00Z", result[:fetched_at]
     end
   end
 

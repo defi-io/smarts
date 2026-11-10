@@ -72,6 +72,16 @@ class DefiLlamaDatasetsTest < ActiveSupport::TestCase
     assert_equal 0.2, pools.first[:apy_change_7d]
   end
 
+  test "fetched_at reports when the cached dataset was downloaded" do
+    stub_json(DefiLlamaDatasets::POOLS_URL, POOLS)
+    assert_nil DefiLlamaDatasets.fetched_at("pools")
+
+    freeze_time do
+      DefiLlamaDatasets.yield_pools
+      assert_equal Time.current, DefiLlamaDatasets.fetched_at("pools")
+    end
+  end
+
   test "each dataset is downloaded once per TTL" do
     request = stub_json(DefiLlamaDatasets::POOLS_URL, POOLS)
     3.times { DefiLlamaDatasets.yield_pools }

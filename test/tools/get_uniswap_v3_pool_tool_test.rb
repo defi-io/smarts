@@ -30,6 +30,8 @@ class GetUniswapV3PoolToolTest < ActiveSupport::TestCase
       result = @tool.payload(chain: "eth", address: @contract.address)
 
       assert_equal "Uniswap V3",    result[:protocol]
+      assert_equal "eth",           result[:chain]
+      assert_equal @contract.address, result[:address]
       assert_equal "USDC/WETH",     result[:pair]
       assert_equal "0.05%",         result[:fee]
       assert_equal 198_819,         result[:tick]

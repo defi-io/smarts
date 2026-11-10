@@ -33,7 +33,8 @@ class InspectAddressTool < ApplicationTool
           symbol: chain_record.native_symbol
         },
         tx_count_sent: result.tx_count,
-        ens_name: result.ens_name
+        ens_name: result.ens_name,
+        fetched_at: result.fetched_at&.utc&.iso8601
       }
     end
 

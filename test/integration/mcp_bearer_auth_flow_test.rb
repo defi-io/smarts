@@ -81,6 +81,13 @@ class McpBearerAuthFlowTest < ActionDispatch::IntegrationTest
     %w[get_aave_v3_market get_stablecoin_supply get_protocol_tvl get_yield_pools find_uniswap_v3_pools quote_uniswap_v3_swap].each { |tool| assert_includes names, tool }
   end
 
+  test "tools/call marks a failing tool call with isError" do
+    body = post_mcp(method: "tools/call", params: { name: "get_erc20_info", arguments: { slug: "nope-eth" } }, bearer: nil)
+
+    assert_equal true, body.dig("result", "isError")
+    assert_equal "unknown slug: nope-eth", JSON.parse(body.dig("result", "content", 0, "text"))["error"]
+  end
+
   private
 
   # POSTs a single JSON-RPC message to the MCP endpoint and parses the

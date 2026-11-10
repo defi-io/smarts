@@ -37,7 +37,8 @@ class FindUniswapV3PoolsTool < ApplicationTool
           p.except(:price_b_per_a).merge("price (1 #{symbol_a} in #{symbol_b})" => p[:price_b_per_a])
         end,
         liquidity_note: "liquidity is Uniswap V3 virtual liquidity at the current tick, not USD. Use quote_uniswap_v3_swap to see what a given size actually gets.",
-        block_number: result.block_number
+        block_number: result.block_number,
+        fetched_at: Time.current.utc.iso8601
       }
     rescue ChainReader::UniswapV3Quoter::Error => e
       { error: e.message }

@@ -44,7 +44,8 @@ class GetYieldPoolsTool < ApplicationTool
         filters: { project: project, chain: chain, symbol: symbol, min_tvl_usd: min_tvl_usd, stablecoin_only: stablecoin_only, sort: sort_key == :apy ? "apy" : "tvl" }.compact,
         match_count: pools.size,
         pools: pools.first(capped),
-        apy_note: "APY values are percentages (4.7 = 4.7%). apy = apy_base + apy_reward; reward APY depends on incentive token prices and can stop at any time."
+        apy_note: "APY values are percentages (4.7 = 4.7%). apy = apy_base + apy_reward; reward APY depends on incentive token prices and can stop at any time.",
+        fetched_at: DefiLlamaDatasets.fetched_at("pools")&.utc&.iso8601
       }
     rescue DefiLlamaDatasets::Error => e
       { error: e.message }
